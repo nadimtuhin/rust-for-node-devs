@@ -330,9 +330,7 @@ add_chapter(
     "Express uses callback middleware and mutable req/res objects. Axum leverages Tokio and type-safe extractors: handler parameters automatically deserialize JSON, headers, or state at compile time.",
     "// Express.js route\napp.get('/users/:id', (req, res) => {\n  res.json({ id: req.params.id, status: 'active' });\n});",
     "Type-safe extractors parse requests declaratively and fail invalid requests before handler execution.",
-    """use std::collections::HashMap;
-
-// Simulated Axum-style handler pattern for standalone playground
+    """// Simulated Axum-style handler pattern for standalone playground
 struct PathExtractor(u32);
 struct JsonResponse { id: u32, status: &'static str }
 
@@ -677,12 +675,14 @@ add_chapter(
     """use std::mem::{size_of, align_of};
 
 // Field ordering impacts padding bytes
+#[repr(C)]
 struct Unoptimized {
     a: u8,   // 1 byte + 7 bytes padding
     b: u64,  // 8 bytes
     c: u8,   // 1 byte + 7 bytes padding = 24 bytes total
 }
 
+#[repr(C)]
 struct Optimized {
     b: u64,  // 8 bytes
     a: u8,   // 1 byte
@@ -934,7 +934,7 @@ use std::thread;
 struct Job { id: u64, payload: &'static str }
 
 fn main() {
-    let (tx, rx) = mpsc::channel();
+    let (tx, rx) = mpsc::channel::<Job>();
 
     // Worker thread
     let worker = thread::spawn(move || {
@@ -1293,7 +1293,7 @@ add_chapter(
     "jemalloc reduces lock contention on multi-core servers, preventing performance degradation under heavy concurrency.",
     """// Rust allows declaring a global allocator with a single line:
 // #[global_allocator]
-// static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;
+// static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 fn main() {
     // Demonstration of high-frequency allocations
@@ -1600,7 +1600,7 @@ add_chapter(
 }
 
 fn main() {
-    println!("'()[]{}' valid? {}", is_valid("()[]{}"));
+    println!("'()[]{{}}' valid? {}", is_valid("()[]{}"));
     println!("'(]' valid?     {}", is_valid("(]"));
 }""",
     {
@@ -1622,7 +1622,7 @@ struct ListNode {
     next: Option<Box<ListNode>>,
 }
 
-fn merge_two_vectors(mut v1: Vec<i32>, mut v2: Vec<i32>) -> Vec<i32> {
+fn merge_two_vectors(v1: Vec<i32>, v2: Vec<i32>) -> Vec<i32> {
     let mut merged = Vec::with_capacity(v1.len() + v2.len());
     let (mut i, mut j) = (0, 0);
 

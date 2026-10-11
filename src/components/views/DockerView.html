@@ -8,7 +8,7 @@
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">The Gold-Standard Dockerfile</h2>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Stage 1: Dependency Chef Recipe
-FROM rust:1.80-bullseye AS chef
+FROM rust:1.84-bookworm AS chef
 RUN cargo install cargo-chef
 WORKDIR /app
 

@@ -1,206 +1,123 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Header from '../../components/Header.astro';
-import Sidebar from '../../components/Sidebar.astro';
 import { chaptersData } from '../../data/chapters';
 
-// Group chapters by part
-const groupedChapters: Record<string, { key: string; num: string; title: string; desc: string }[]> = {};
+const chaptersList = Object.entries(chaptersData);
 
-for (const [key, ch] of Object.entries(chaptersData)) {
-  if (!groupedChapters[ch.part]) {
-    groupedChapters[ch.part] = [];
-  }
-  groupedChapters[ch.part].push({
-    key,
-    num: ch.num,
-    title: ch.title,
-    desc: ch.desc
-  });
-}
+const groupedParts = chaptersList.reduce((acc, [key, ch]) => {
+  if (!acc[ch.part]) acc[ch.part] = [];
+  acc[ch.part].push({ key, ...ch });
+  return acc;
+}, {} as Record<string, any[]>);
 
 const architectureGuides = [
-  { href: '/testing', icon: '🧪', title: 'Unit & Integration Testing', desc: 'Table-driven tests, Testcontainers (Postgres/Redis), miniredis, and httptest.' },
-  { href: '/ai', icon: '🤖', title: 'Rust in the AI Era', desc: 'High-throughput LLM gateways, Ollama serving, Weaviate vector DBs, and SSE streaming.' },
-  { href: '/ai-agents', icon: '🦾', title: 'AI Agents & LangChainGo', desc: 'Autonomous ReAct agents, parallel tool calling with errgroup, and pure Rust MCP servers.' },
-  { href: '/go-vs-rust', icon: '🦀', title: 'Rust vs Rust Systems Guide', desc: '11-dimension comparison, memory models (GC vs Borrow Checker), and interactive decision engine.' },
-  { href: '/docker', icon: '🐳', title: 'Production Docker Containerization', desc: 'Multi-stage builds, Distroless and scratch images, and zero-CVE containers under 15MB.' },
-  { href: '/interviews', icon: '🎯', title: 'Senior Rust Interview Questions', desc: '20 senior backend questions on GMP scheduler, tricolor GC, escape analysis, and channel state.' },
-  { href: '/go-mod-vs-npm', icon: '📦', title: 'go.mod vs package.json', desc: 'Minimal Version Selection (MVS), Merkle tree go.sum, /v2 semantic imports, and flat vendoring.' },
-  { href: '/troubleshooting', icon: '🛠️', title: 'Compilation & Air Hot Reload', desc: '5-stage SSA compilation pipeline, compiler power flags, and sub-500ms Air live reloading.' },
-  { href: '/microservice', icon: '📂', title: 'Fullstack Microservice Architecture', desc: 'Express vs Rust Fiber, MongoDB connection singletons, and clean repository patterns.' },
-  { href: '/philosophy', icon: '🧠', title: 'Genesis, History & The Zen of Go', desc: 'Rob Pike and Ken Thompson 45-min build catalyst, Google-scale design, and Rust Proverbs.' },
-  { href: '/pitfalls', icon: '⚠️', title: 'Common Rust Pitfalls & Footguns', desc: 'Loop variable closures, nil interface traps, goroutine leaks, and slice mutations.' },
-  { href: '/leetcode', icon: '🧩', title: 'LeetCode in Rust (JS vs Go)', desc: 'Idiomatic Rust solutions for top LeetCode Easy problems with time/space complexity analysis.' },
-  { href: '/cheatsheet', icon: '📖', title: 'Rosetta Code Syntax Cheatsheet', desc: 'Comprehensive side-by-side syntax mapping from JavaScript/TypeScript to Go.' }
+  { href: '/borrow-checker', icon: '🦀', title: 'Borrow Checker Mastery', desc: 'Mental models and visual guide to Aliasing XOR Mutability and Non-Lexical Lifetimes.' },
+  { href: '/async-tokio', icon: '⚡', title: 'Async Rust & Tokio Runtime', desc: 'Architectural comparison between Node.js libuv event loop and Tokio multi-threaded work-stealing scheduler.' },
+  { href: '/cargo-vs-npm', icon: '📦', title: 'Cargo vs npm Architecture Guide', desc: 'Deep dive into Cargo.toml, workspaces, feature flags, lockfiles, and zero-bloat builds.' },
+  { href: '/microservice', icon: '📂', title: 'Production Axum Microservice', desc: 'Express/Mongoose microservice re-architected in Axum, Tower middleware, and SQLx.' },
+  { href: '/docker', icon: '🐳', title: 'Production Distroless Dockerfile', desc: 'Ultra-compact multi-stage cargo-chef builds producing static binaries under 15MB.' },
+  { href: '/testing', icon: '🧪', title: 'Testing & Mocking in Rust', desc: 'First-class unit tests, integration tests, mockall, and parallel test execution vs Jest/Vitest.' },
+  { href: '/ai-agents', icon: '🦾', title: 'AI & Autonomous Agents in Rust', desc: 'High-throughput LLM tool callers, token streaming gateways, and local ML inference with rig-core & candle.' },
+  { href: '/interviews', icon: '🎯', title: 'Senior Rust Interview Q&A', desc: 'High-frequency systems questions: memory layout (String vs &str), Tokio mutex traps, and RAII.' },
+  { href: '/troubleshooting', icon: '🛠️', title: 'Diagnostics, Flamegraphs & Profiling', desc: 'Debugging compiler errors, cargo-flamegraph CPU profiling, and catching UB with Miri.' },
+  { href: '/philosophy', icon: '🧠', title: 'The Rust Philosophy', desc: 'Memory safety without garbage collection, zero-cost abstractions, and fearless concurrency.' },
+  { href: '/pitfalls', icon: '⚠️', title: 'Top 8 Rust Pitfalls & Footguns', desc: 'Clone overuse, blocking async worker threads, lock poisoning, and recursive types.' },
+  { href: '/leetcode', icon: '🧩', title: 'LeetCode in Rust', desc: 'Classic data structures and algorithms solved with zero-allocation Rust patterns vs JS objects.' },
+  { href: '/cheatsheet', icon: '📖', title: 'Rosetta Stone Cheatsheet', desc: 'Syntax and idiom quick lookup comparing JavaScript/TypeScript with Rust side-by-side.' },
 ];
 ---
 
 <Layout 
-  title="Complete Curriculum & Chapters Directory | Go"
-  description="Explore all 60 interactive Rust lessons and 13 production architecture guides organized into structured chapters."
+  title="Complete Curriculum & Chapters Directory | Rust for Node.js Devs"
+  description="Explore all 56 interactive Rust lessons and 13 production architecture appendices designed specifically for JavaScript and TypeScript engineers."
 >
   <Header />
 
-  <!-- GitBook Book Reader Shell -->
-  <div id="viewStudio" class="studio-container gitbook-container">
-    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()" aria-hidden="true"></div>
-    <Sidebar />
-    <main id="main-content" class="curriculum-main-scroll gitbook-main-scroll" role="main" aria-label="Curriculum and Chapters Directory">
-      <div class="curriculum-container">
-      <!-- Hero Header -->
-    <section class="curriculum-hero" aria-labelledby="curriculum-heading">
-      <div style="display: flex; justify-content: center; gap: 0.6rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap;">
-        <span class="hero-badge" style="margin-bottom: 0;">📖 The Interactive Book</span>
-        <button id="chaptersMobileTocBtn" class="sidebar-expand-btn chapters-mobile-toc-btn" onclick="toggleSidebar()" aria-label="Toggle Table of Contents drawer" title="Toggle Table of Contents">☰ Table of Contents</button>
-      </div>
-      <h1 id="curriculum-heading" class="curriculum-title">Rust for Node.js Developers — All Chapters</h1>
-      <p class="curriculum-subtitle">
-        A hands-on, chapter-by-chapter programming book for JavaScript and TypeScript developers learning Go. Features 60 interactive chapters runnable directly in your browser, paired with 13 comprehensive production architecture guides.
-      </p>
-
-      <div class="curriculum-stats-bar">
-        <div class="stat-card">
-          <span class="stat-number">60</span>
-          <span class="stat-label">Coding Lessons</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-number">13</span>
-          <span class="stat-label">Architecture Guides</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-number">100%</span>
-          <span class="stat-label">Browser Runnable</span>
-        </div>
-        <div class="stat-card">
-          <span class="stat-number">0</span>
-          <span class="stat-label">Host Dependencies</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Interactive Chapters Grouped By Part -->
-    <section class="curriculum-section" aria-labelledby="lessons-heading">
-      <div class="section-header">
-        <h2 id="lessons-heading" class="section-title">
-          <span class="section-icon">📖</span> Book Table of Contents (60 Interactive Chapters)
-        </h2>
-        <span class="section-count">60 Chapters</span>
-      </div>
-
-      {Object.entries(groupedChapters).map(([partName, lessons]) => (
-        <div class="curriculum-part-group">
-          <div class="part-header-bar">
-            <h3 class="part-title">{partName}</h3>
-            <span class="part-count-badge">{lessons.length} Chapters</span>
+  <main class="curriculum-main-scroll" id="main-content" role="main">
+    <div class="curriculum-container">
+      <header class="curriculum-hero">
+        <span class="hero-badge">Curriculum Index • 56 Chapters + 13 Appendices</span>
+        <h1 class="curriculum-title">Rust for Node.js Developers Masterclass</h1>
+        <p class="curriculum-subtitle">
+          A structured, progressive roadmap taking you from single-threaded JavaScript/TypeScript to bare-metal systems programming, fearless concurrency, and production web services in Rust.
+        </p>
+        <div class="curriculum-stats-bar">
+          <div class="stat-card">
+            <span class="stat-number">56</span>
+            <span class="stat-label">Interactive Lessons</span>
           </div>
-
-          <div class="lessons-grid">
-            {lessons.map(lesson => (
-              <a href={`/chapter/${lesson.key}`} class="lesson-link-card">
-                <div class="lesson-badge-row">
-                  <span class="lesson-num-pill">{lesson.num}</span>
-                  <span class="lesson-try-tag">🚀 Run Code</span>
-                </div>
-                <h4 class="lesson-card-title">{lesson.title}</h4>
-                <p class="lesson-card-desc">{lesson.desc}</p>
-              </a>
-            ))}
+          <div class="stat-card">
+            <span class="stat-number">8</span>
+            <span class="stat-label">Curriculum Parts</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-number">13</span>
+            <span class="stat-label">Architecture Guides</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-number">100%</span>
+            <span class="stat-label">Live In-Browser Compiler</span>
           </div>
         </div>
-      ))}
-    </section>
+      </header>
 
-    <!-- Architecture Guides & Appendices Section -->
-    <section class="curriculum-section" aria-labelledby="guides-heading">
-      <div class="section-header">
-        <h2 id="guides-heading" class="section-title">
-          <span class="section-icon">📑</span> Appendices & Production Architecture Guides
-        </h2>
-        <span class="section-count">13 Appendices</span>
-      </div>
+      <!-- Appendices Section -->
+      <section class="curriculum-section">
+        <div class="section-header">
+          <h2 class="section-title"><span>📑</span> Architecture Guides & Appendices</h2>
+          <span class="section-count">13 In-Depth Guides</span>
+        </div>
+        <div class="guides-card-grid">
+          {architectureGuides.map(guide => (
+            <a href={guide.href} class="guide-nav-card">
+              <span class="guide-card-icon">{guide.icon}</span>
+              <div class="guide-card-content">
+                <h3 class="guide-card-title">{guide.title}</h3>
+                <p class="guide-card-desc">{guide.desc}</p>
+              </div>
+              <span class="guide-card-arrow">→</span>
+            </a>
+          ))}
+        </div>
+      </section>
 
-      <div class="guides-card-grid">
-        {architectureGuides.map(guide => (
-          <a href={guide.href} class="guide-nav-card">
-            <div class="guide-card-icon">{guide.icon}</div>
-            <div class="guide-card-content">
-              <h3 class="guide-card-title">{guide.title}</h3>
-              <p class="guide-card-desc">{guide.desc}</p>
+      <!-- Lessons Section -->
+      <section class="curriculum-section">
+        <div class="section-header">
+          <h2 class="section-title"><span>📖</span> The Core Curriculum</h2>
+          <span class="section-count">56 Chapters</span>
+        </div>
+
+        {Object.entries(groupedParts).map(([partName, items]) => (
+          <div class="curriculum-part-group">
+            <div class="part-header-bar">
+              <h3 class="part-title">{partName}</h3>
+              <span class="part-count-badge">{items.length} Lessons</span>
             </div>
-            <span class="guide-card-arrow" aria-hidden="true">→</span>
-          </a>
+            <div class="lessons-grid">
+              {items.map(item => (
+                <a href={`/chapter/${item.key}`} class="lesson-link-card">
+                  <div class="lesson-badge-row">
+                    <span class="lesson-num-pill">#{item.num}</span>
+                    <span class="lesson-try-tag">⚡ Try in Studio</span>
+                  </div>
+                  <h4 class="lesson-card-title">{item.title}</h4>
+                  <p class="lesson-card-desc">{item.desc}</p>
+                </a>
+              ))}
+            </div>
+          </div>
         ))}
-      </div>
-    </section>
+      </section>
     </div>
   </main>
-  </div>
-
-  <script>
-    function toggleSidebar() {
-      const studio = document.getElementById('viewStudio');
-      if (studio) {
-        if (window.innerWidth <= 860) {
-          studio.classList.toggle('mobile-sidebar-open');
-        } else {
-          studio.classList.toggle('sidebar-collapsed');
-        }
-      }
-    }
-
-    function filterLessons(query) {
-      const q = query.toLowerCase().trim();
-      const clearBtn = document.getElementById('clearSearchBtn');
-      if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
-
-      let visibleCount = 0;
-      const items = document.querySelectorAll('.chapter-nav-item');
-      items.forEach(item => {
-        const text = item.innerText.toLowerCase();
-        const matches = text.includes(q);
-        item.style.display = matches ? 'flex' : 'none';
-        if (matches) visibleCount++;
-      });
-
-      document.querySelectorAll('.sidebar-part-label').forEach(label => {
-        let sibling = label.nextElementSibling;
-        let anyVisible = false;
-        while (sibling && sibling.classList.contains('chapter-nav-item')) {
-          if (sibling.style.display !== 'none') anyVisible = true;
-          sibling = sibling.nextElementSibling;
-        }
-        label.style.display = anyVisible ? 'block' : 'none';
-      });
-
-      const badge = document.getElementById('sidebarCountBadge');
-      if (badge) badge.innerText = q ? `${visibleCount} Found` : '56 Chapters';
-    }
-
-    function clearLessonSearch() {
-      const input = document.getElementById('lessonSearchInput');
-      if (input) {
-        input.value = '';
-        filterLessons('');
-        input.focus();
-      }
-    }
-
-    function selectChapter(key) {
-      window.location.href = '/chapter/' + key;
-    }
-
-    window.toggleSidebar = toggleSidebar;
-    window.filterLessons = filterLessons;
-    window.clearLessonSearch = clearLessonSearch;
-    window.selectChapter = selectChapter;
-  </script>
 </Layout>
 
 <style>
   .curriculum-main-scroll {
     flex: 1;
-    min-height: 0;
+    min-height: calc(100vh - 54px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     background: var(--bg);
@@ -226,9 +143,9 @@ const architectureGuides = [
   .hero-badge {
     display: inline-block;
     padding: 0.35rem 0.85rem;
-    background: #e0f2fe;
-    color: #b7410e;
-    border: 1px solid #bae6fd;
+    background: #ffedd5;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
     border-radius: 2rem;
     font-size: 0.85rem;
     font-weight: 700;
@@ -311,7 +228,7 @@ const architectureGuides = [
     font-size: 0.85rem;
     font-weight: 700;
     color: #b7410e;
-    background: #e0f2fe;
+    background: #ffedd5;
     padding: 0.25rem 0.75rem;
     border-radius: 1rem;
   }
@@ -338,7 +255,7 @@ const architectureGuides = [
   .guide-nav-card:hover {
     border-color: #b7410e;
     transform: translateY(-2px);
-    box-shadow: 0 8px 16px -4px rgba(0, 173, 216, 0.15);
+    box-shadow: 0 8px 16px -4px rgba(183, 65, 14, 0.15);
   }
 
   .guide-card-icon {
@@ -429,7 +346,7 @@ const architectureGuides = [
   .lesson-link-card:hover {
     border-color: #b7410e;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 173, 216, 0.12);
+    box-shadow: 0 4px 12px rgba(183, 65, 14, 0.12);
   }
 
   .lesson-badge-row {
@@ -443,7 +360,7 @@ const architectureGuides = [
     font-size: 0.75rem;
     font-weight: 800;
     color: #b7410e;
-    background: #e0f2fe;
+    background: #ffedd5;
     padding: 0.2rem 0.5rem;
     border-radius: 0.25rem;
     font-family: var(--font-mono, monospace);
@@ -475,18 +392,6 @@ const architectureGuides = [
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
-  }
-
-  .chapters-mobile-toc-btn {
-    display: none;
-  }
-
-  @media (max-width: 860px) {
-    .chapters-mobile-toc-btn {
-      display: inline-flex;
-      font-size: 0.8rem;
-      padding: 0.35rem 0.75rem;
-    }
   }
 
   @media (max-width: 768px) {

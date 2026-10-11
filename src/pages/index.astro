@@ -38,7 +38,7 @@ const initialChapter = chaptersData[initialKey];
 
     // Mobile Sidebar Drawer Toggle
     function toggleSidebar(forceState) {
-      const sidebar = document.getElementById('sidebar');
+      const sidebar = document.getElementById('chaptersList');
       const overlay = document.getElementById('sidebarOverlay');
       if (!sidebar) return;
 
@@ -179,6 +179,8 @@ const initialChapter = chaptersData[initialKey];
       });
 
       if (notice) notice.style.display = visibleCount === 0 ? 'block' : 'none';
+      const badge = document.getElementById('sidebarCountBadge');
+      if (badge) badge.innerText = q ? `${visibleCount} Found` : '56 Chapters';
     }
 
     function clearLessonSearch() {
@@ -194,7 +196,7 @@ const initialChapter = chaptersData[initialKey];
       const nodeEl = document.getElementById('detailNodeCode');
       if (nodeEl) {
         navigator.clipboard.writeText(nodeEl.innerText).then(() => {
-          alert('Copied Node.js snippet!');
+          updateStatus('Copied JS Snippet', 'ready');
         });
       }
     }
@@ -202,7 +204,7 @@ const initialChapter = chaptersData[initialKey];
     function copyEditorCode() {
       const code = editor ? editor.getValue() : '';
       navigator.clipboard.writeText(code).then(() => {
-        alert('Copied Rust code!');
+        updateStatus('Copied Rust Code', 'ready');
       });
     }
 
@@ -222,7 +224,7 @@ const initialChapter = chaptersData[initialKey];
       const c = document.getElementById('consoleArea');
       if (c) {
         navigator.clipboard.writeText(c.innerText).then(() => {
-          alert('Copied terminal output!');
+          updateStatus('Copied Terminal Output', 'ready');
         });
       }
     }

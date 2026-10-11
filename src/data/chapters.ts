@@ -106,7 +106,7 @@ export const chaptersData: Record<string, Chapter> = {
     "desc": "Express uses callback middleware and mutable req/res objects. Axum leverages Tokio and type-safe extractors: handler parameters automatically deserialize JSON, headers, or state at compile time.",
     "nodeCode": "// Express.js route\napp.get('/users/:id', (req, res) => {\n  res.json({ id: req.params.id, status: 'active' });\n});",
     "why": "Type-safe extractors parse requests declaratively and fail invalid requests before handler execution.",
-    "code": "use std::collections::HashMap;\n\n// Simulated Axum-style handler pattern for standalone playground\nstruct PathExtractor(u32);\nstruct JsonResponse { id: u32, status: &'static str }\n\nfn user_handler(PathExtractor(id): PathExtractor) -> JsonResponse {\n    JsonResponse { id, status: \"active\" }\n}\n\nfn main() {\n    let req = PathExtractor(42);\n    let resp = user_handler(req);\n    println!(\"Status: 200 OK | Payload: {{ id: {}, status: '{}' }}\", resp.id, resp.status);\n}"
+    "code": "// Simulated Axum-style handler pattern for standalone playground\nstruct PathExtractor(u32);\nstruct JsonResponse { id: u32, status: &'static str }\n\nfn user_handler(PathExtractor(id): PathExtractor) -> JsonResponse {\n    JsonResponse { id, status: \"active\" }\n}\n\nfn main() {\n    let req = PathExtractor(42);\n    let resp = user_handler(req);\n    println!(\"Status: 200 OK | Payload: {{ id: {}, status: '{}' }}\", resp.id, resp.status);\n}"
   },
   "state_singleton": {
     "num": "2",
@@ -205,7 +205,7 @@ export const chaptersData: Record<string, Chapter> = {
     "desc": "In V8, JavaScript objects are hidden-class shapes with pointer overhead. In Rust, structs are laid out contiguously in memory with hardware-level byte alignment and padding.",
     "nodeCode": "// V8 hides memory layout, object headers, and pointer tags\nconst point = { x: 10, y: 20 };",
     "why": "Understanding struct alignment enables cache-line optimization and zero-waste memory footprints.",
-    "code": "use std::mem::{size_of, align_of};\n\n// Field ordering impacts padding bytes\nstruct Unoptimized {\n    a: u8,   // 1 byte + 7 bytes padding\n    b: u64,  // 8 bytes\n    c: u8,   // 1 byte + 7 bytes padding = 24 bytes total\n}\n\nstruct Optimized {\n    b: u64,  // 8 bytes\n    a: u8,   // 1 byte\n    c: u8,   // 1 byte + 6 bytes padding = 16 bytes total\n}\n\nfn main() {\n    println!(\"Unoptimized size: {} bytes, align: {}\", size_of::<Unoptimized>(), align_of::<Unoptimized>());\n    println!(\"Optimized size:   {} bytes, align: {}\", size_of::<Optimized>(), align_of::<Optimized>());\n}"
+    "code": "use std::mem::{size_of, align_of};\n\n// Field ordering impacts padding bytes\n#[repr(C)]\nstruct Unoptimized {\n    a: u8,   // 1 byte + 7 bytes padding\n    b: u64,  // 8 bytes\n    c: u8,   // 1 byte + 7 bytes padding = 24 bytes total\n}\n\n#[repr(C)]\nstruct Optimized {\n    b: u64,  // 8 bytes\n    a: u8,   // 1 byte\n    c: u8,   // 1 byte + 6 bytes padding = 16 bytes total\n}\n\nfn main() {\n    println!(\"Unoptimized size: {} bytes, align: {}\", size_of::<Unoptimized>(), align_of::<Unoptimized>());\n    println!(\"Optimized size:   {} bytes, align: {}\", size_of::<Optimized>(), align_of::<Optimized>());\n}"
   },
   "sqlx_compile_time": {
     "num": "13",
@@ -268,7 +268,7 @@ export const chaptersData: Record<string, Chapter> = {
     "desc": "BullMQ coordinates background job queues in Node.js using Redis Lua scripts. In Rust, Redis Streams or dedicated engines (`faktory-rs`, `apalis`) provide high-throughput job consumer workers.",
     "nodeCode": "// BullMQ worker\nconst worker = new Worker('emails', async job => {\n  await sendMail(job.data);\n});",
     "why": "Consumer groups allow scaling background workers across multiple machines with reliable delivery guarantees.",
-    "code": "use std::sync::mpsc;\nuse std::thread;\n\nstruct Job { id: u64, payload: &'static str }\n\nfn main() {\n    let (tx, rx) = mpsc::channel();\n\n    // Worker thread\n    let worker = thread::spawn(move || {\n        while let Ok(job) = rx.recv() {\n            println!(\"Worker processed job #{}: {}\", job.id, job.payload);\n        }\n    });\n\n    // Enqueue jobs\n    tx.send(Job { id: 1, payload: \"Send Welcome Email\" }).unwrap();\n    tx.send(Job { id: 2, payload: \"Process Invoice\" }).unwrap();\n    drop(tx); // Close channel\n\n    worker.join().unwrap();\n}"
+    "code": "use std::sync::mpsc;\nuse std::thread;\n\nstruct Job { id: u64, payload: &'static str }\n\nfn main() {\n    let (tx, rx) = mpsc::channel::<Job>();\n\n    // Worker thread\n    let worker = thread::spawn(move || {\n        while let Ok(job) = rx.recv() {\n            println!(\"Worker processed job #{}: {}\", job.id, job.payload);\n        }\n    });\n\n    // Enqueue jobs\n    tx.send(Job { id: 1, payload: \"Send Welcome Email\" }).unwrap();\n    tx.send(Job { id: 2, payload: \"Process Invoice\" }).unwrap();\n    drop(tx); // Close channel\n\n    worker.join().unwrap();\n}"
   },
   "job_retries": {
     "num": "20",
@@ -376,7 +376,7 @@ export const chaptersData: Record<string, Chapter> = {
     "desc": "V8 handles heap allocations using its internal garbage-collected heap. Rust defaults to the system allocator (glibc malloc), but switching to `jemalloc` or `mimalloc` dramatically improves multi-threaded throughput and prevents memory fragmentation.",
     "nodeCode": "// Node.js exposes --max-old-space-size for V8 heap limits\nnode --max-old-space-size=4096 server.js",
     "why": "jemalloc reduces lock contention on multi-core servers, preventing performance degradation under heavy concurrency.",
-    "code": "// Rust allows declaring a global allocator with a single line:\n// #[global_allocator]\n// static GLOBAL: jemallocator::Jemalloc = jemallocator::Jemalloc;\n\nfn main() {\n    // Demonstration of high-frequency allocations\n    let mut data = Vec::new();\n    for i in 0..10_000 {\n        data.push(i);\n    }\n    println!(\"Allocated {} items with allocator\", data.len());\n}"
+    "code": "// Rust allows declaring a global allocator with a single line:\n// #[global_allocator]\n// static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;\n\nfn main() {\n    // Demonstration of high-frequency allocations\n    let mut data = Vec::new();\n    for i in 0..10_000 {\n        data.push(i);\n    }\n    println!(\"Allocated {} items with allocator\", data.len());\n}"
   },
   "atomics_memory_ordering": {
     "num": "32",
@@ -466,7 +466,7 @@ export const chaptersData: Record<string, Chapter> = {
     "desc": "Given a string `s` containing '(', ')', '{', '}', '[' and ']', determine if the input string is valid. Solved using `Vec<char>` as a fast LIFO stack.",
     "nodeCode": "// JS Valid Parentheses\nfunction isValid(s) {\n  const stack = [];\n  for (const c of s) {\n    if (c === '(') stack.push(')');\n    else if (stack.pop() !== c) return false;\n  }\n  return stack.length === 0;\n}",
     "why": "Rust's Vec functions as a cache-efficient LIFO stack with O(1) push and pop.",
-    "code": "fn is_valid(s: &str) -> bool {\n    let mut stack = Vec::new();\n\n    for ch in s.chars() {\n        match ch {\n            '(' => stack.push(')'),\n            '{' => stack.push('}'),\n            '[' => stack.push(']'),\n            ')' | '}' | ']' => {\n                if stack.pop() != Some(ch) {\n                    return false;\n                }\n            }\n            _ => {}\n        }\n    }\n    stack.is_empty()\n}\n\nfn main() {\n    println!(\"'()[]{}' valid? {}\", is_valid(\"()[]{}\"));\n    println!(\"'(]' valid?     {}\", is_valid(\"(]\"));\n}"
+    "code": "fn is_valid(s: &str) -> bool {\n    let mut stack = Vec::new();\n\n    for ch in s.chars() {\n        match ch {\n            '(' => stack.push(')'),\n            '{' => stack.push('}'),\n            '[' => stack.push(']'),\n            ')' | '}' | ']' => {\n                if stack.pop() != Some(ch) {\n                    return false;\n                }\n            }\n            _ => {}\n        }\n    }\n    stack.is_empty()\n}\n\nfn main() {\n    println!(\"'()[]{{}}' valid? {}\", is_valid(\"()[]{}\"));\n    println!(\"'(]' valid?     {}\", is_valid(\"(]\"));\n}"
   },
   "lc_merge_lists": {
     "num": "LC21",
@@ -475,7 +475,7 @@ export const chaptersData: Record<string, Chapter> = {
     "desc": "Merge two sorted linked lists and return it as a sorted list. In Rust, recursive or loop-based pointer manipulation is solved cleanly with Option and pattern matching.",
     "nodeCode": "// JS Merge Lists\nfunction mergeTwoLists(l1, l2) {\n  if (!l1) return l2;\n  if (!l2) return l1;\n  if (l1.val < l2.val) { l1.next = mergeTwoLists(l1.next, l2); return l1; }\n  l2.next = mergeTwoLists(l1, l2.next); return l2;\n}",
     "why": "Demonstrates recursive pattern matching over optional node links.",
-    "code": "#[derive(Debug, PartialEq, Eq)]\nstruct ListNode {\n    val: i32,\n    next: Option<Box<ListNode>>,\n}\n\nfn merge_two_vectors(mut v1: Vec<i32>, mut v2: Vec<i32>) -> Vec<i32> {\n    let mut merged = Vec::with_capacity(v1.len() + v2.len());\n    let (mut i, mut j) = (0, 0);\n\n    while i < v1.len() && j < v2.len() {\n        if v1[i] <= v2[j] {\n            merged.push(v1[i]);\n            i += 1;\n        } else {\n            merged.push(v2[j]);\n            j += 1;\n        }\n    }\n    merged.extend_from_slice(&v1[i..]);\n    merged.extend_from_slice(&v2[j..]);\n    merged\n}\n\nfn main() {\n    let l1 = vec![1, 2, 4];\n    let l2 = vec![1, 3, 4];\n    println!(\"Merged sorted list: {:?}\", merge_two_vectors(l1, l2));\n}"
+    "code": "#[derive(Debug, PartialEq, Eq)]\nstruct ListNode {\n    val: i32,\n    next: Option<Box<ListNode>>,\n}\n\nfn merge_two_vectors(v1: Vec<i32>, v2: Vec<i32>) -> Vec<i32> {\n    let mut merged = Vec::with_capacity(v1.len() + v2.len());\n    let (mut i, mut j) = (0, 0);\n\n    while i < v1.len() && j < v2.len() {\n        if v1[i] <= v2[j] {\n            merged.push(v1[i]);\n            i += 1;\n        } else {\n            merged.push(v2[j]);\n            j += 1;\n        }\n    }\n    merged.extend_from_slice(&v1[i..]);\n    merged.extend_from_slice(&v2[j..]);\n    merged\n}\n\nfn main() {\n    let l1 = vec![1, 2, 4];\n    let l2 = vec![1, 3, 4];\n    println!(\"Merged sorted list: {:?}\", merge_two_vectors(l1, l2));\n}"
   },
   "lc_buy_sell_stock": {
     "num": "LC121",

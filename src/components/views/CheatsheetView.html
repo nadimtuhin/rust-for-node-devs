@@ -1,42 +1,85 @@
-<div class="appendix-container" style="max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
+<div class="appendix-container" style="max-width: 960px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #e0e7ff; color: #4338ca; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 13 • Reference</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Rosetta Stone Syntax Cheatsheet</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Quick syntax lookup comparing TypeScript and Rust side-by-side.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto;">Comprehensive side-by-side systems comparison between TypeScript and Rust idioms.</p>
   </div>
 
-  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow-x: auto;">
+    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
       <thead>
-        <tr style="border-bottom: 2px solid #e2e8f0; color: #64748b;">
-          <th style="padding: 0.75rem 0.5rem;">TypeScript Concept</th>
-          <th style="padding: 0.75rem 0.5rem;">Rust Equivalent</th>
+        <tr style="border-bottom: 2px solid #cbd5e1; color: #475569;">
+          <th style="padding: 0.75rem 0.5rem; width: 22%;">Domain</th>
+          <th style="padding: 0.75rem 0.5rem; width: 38%;">TypeScript / Node.js</th>
+          <th style="padding: 0.75rem 0.5rem; width: 40%;">Rust Equivalent</th>
         </tr>
       </thead>
       <tbody>
+        <!-- Variables & Mutability -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
-          <td style="padding: 0.75rem 0.5rem;"><code>const x = 5; let y = 10;</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>let x = 5; let mut y = 10;</code></td>
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Variables</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>const x = 5;<br/>let y = 10;</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>let x = 5;<br/>let mut y = 10;</code></td>
         </tr>
+        <!-- Basic Types -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
-          <td style="padding: 0.75rem 0.5rem;"><code>number</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>i32, i64, u32, u64, f64, usize</code></td>
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Numeric Types</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>number, bigint</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>i8, i16, i32, i64, i128, isize<br/>u8, u16, u32, u64, u128, usize, f32, f64</code></td>
         </tr>
+        <!-- Strings -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
-          <td style="padding: 0.75rem 0.5rem;"><code>string</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>String</code> (owned heap) or <code>&str</code> (borrowed slice)</td>
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Strings</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>string</code> (UTF-16 heap managed)</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>String</code> (growable UTF-8 heap)<br/><code>&str</code> (borrowed UTF-8 string slice)</td>
         </tr>
+        <!-- Pattern Matching -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
-          <td style="padding: 0.75rem 0.5rem;"><code>null | undefined</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>Option&lt;T&gt; (Some(val) | None)</code></td>
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Pattern Matching</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>switch (status) {<br/>&nbsp;&nbsp;case "ok": return 1;<br/>&nbsp;&nbsp;default: return 0;<br/>}</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>match status {<br/>&nbsp;&nbsp;Status::Ok(val) if val > 0 => 1,<br/>&nbsp;&nbsp;Status::Ok(_) => 0,<br/>&nbsp;&nbsp;_ => -1,<br/>}</code></td>
         </tr>
+        <!-- If Let -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
-          <td style="padding: 0.75rem 0.5rem;"><code>throw new Error(...)</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>Result&lt;T, E&gt; (Ok(v) | Err(e))</code></td>
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Guard / Destructure</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>if (user !== null) { ... }</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>if let Some(user) = maybe_user { ... }</code></td>
         </tr>
+        <!-- Option Combinators -->
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Option / Nullable</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>user?.profile?.avatar ?? "default.png"</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>user.and_then(|u| u.profile)<br/>&nbsp;&nbsp;.map(|p| p.avatar)<br/>&nbsp;&nbsp;.unwrap_or_else(|| "default.png".into())</code></td>
+        </tr>
+        <!-- Result and Question Mark -->
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Error Propagation</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>try {<br/>&nbsp;&nbsp;const res = await fetch();<br/>} catch (e) { throw e; }</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>let res = fetch().await?;<br/>// Early returns Err on failure via ? operator</code></td>
+        </tr>
+        <!-- Structured Error Handling -->
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Custom Errors</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>class ApiError extends Error { ... }</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>#[derive(thiserror::Error, Debug)]<br/>pub enum AppError {<br/>&nbsp;&nbsp;#[error("Not found: {0}")]<br/>&nbsp;&nbsp;NotFound(String),<br/>&nbsp;&nbsp;#[error(transparent)]<br/>&nbsp;&nbsp;Db(#[from] sqlx::Error),<br/>}</code></td>
+        </tr>
+        <!-- Closures -->
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Closures & Captures</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>const add = (x: number) => x + n;<br/>// implicit lexical capture</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>|x| x + n // Borrowed capture (&)<br/>move |x| x + n // Owned capture (move)<br/>Traits: Fn, FnMut, FnOnce</code></td>
+        </tr>
+        <!-- Interfaces vs Traits -->
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Interfaces vs Traits</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>interface Printable {<br/>&nbsp;&nbsp;print(): void;<br/>}</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>pub trait Printable {<br/>&nbsp;&nbsp;fn print(&self);<br/>}<br/>impl Printable for MyStruct { ... }</code></td>
+        </tr>
+        <!-- Generics / Bounds -->
         <tr>
-          <td style="padding: 0.75rem 0.5rem;"><code>Array&lt;T&gt; / T[]</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>Vec&lt;T&gt;</code> (dynamic) or <code>[T; N]</code> (fixed)</td>
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Generics & Bounds</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>function log&lt;T extends Printable&gt;(x: T)</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>fn log&lt;T: Printable + Send&gt;(x: T)<br/>// or with where clause: where T: Printable</code></td>
         </tr>
       </tbody>
     </table>

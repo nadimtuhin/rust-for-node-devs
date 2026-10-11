@@ -18,6 +18,7 @@ const guideLinks = [
   { href: '/pitfalls', icon: '⚠️', label: 'Footguns & Pitfalls' },
   { href: '/leetcode', icon: '🧩', label: 'LeetCode in Rust' },
   { href: '/cheatsheet', icon: '📖', label: 'Rosetta Cheatsheet' },
+  { href: '/roadmap', icon: '🧭', label: 'Developer Roadmap' },
 ];
 
 const currentGuide = guideLinks.find(g => pathname === g.href);
@@ -33,6 +34,7 @@ const currentGuide = guideLinks.find(g => pathname === g.href);
   <nav class="header-nav-scroll" role="navigation" aria-label="Site Navigation">
     <a href="/" class={`tab-toggle ${isStudio ? 'active' : ''}`} aria-current={isStudio ? 'page' : undefined}>⚡ Studio</a>
     <a href="/chapters" class={`tab-toggle ${isChapters ? 'active' : ''}`} aria-current={isChapters ? 'page' : undefined}>📚 Chapters</a>
+    <a href="/roadmap" class={`tab-toggle ${pathname === '/roadmap' ? 'active' : ''}`} aria-current={pathname === '/roadmap' ? 'page' : undefined}>🧭 Roadmap</a>
 
     {currentGuide && (
       <a href={currentGuide.href} class="tab-toggle active" aria-current="page">
@@ -55,7 +57,7 @@ const currentGuide = guideLinks.find(g => pathname === g.href);
       </button>
 
       <div id="guidesDropdownMenu" class="dropdown-menu" role="menu" aria-labelledby="guidesDropdownBtn">
-        <div class="dropdown-header">13 Appendices & Architecture Guides</div>
+        <div class="dropdown-header">14 Appendices & Architecture Guides</div>
         <div class="dropdown-grid">
           {guideLinks.map(guide => (
             <a 

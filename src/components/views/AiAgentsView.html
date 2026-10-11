@@ -1,17 +1,127 @@
-<div class="appendix-container" style="max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
+<div class="appendix-container" style="max-width: 960px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #fae8ff; color: #a21caf; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 07 • Artificial Intelligence</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Building AI Agents in Rust</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Why leading AI companies are migrating agent execution loops and token streaming gateways from Node.js/Python to Rust.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto;">High-throughput token streaming with Server-Sent Events (SSE), tool execution with Rig, and edge inference via Candle.</p>
   </div>
 
-  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">The Modern Rust AI Ecosystem</h2>
-    <ul style="padding-left: 1.25rem; color: #475569; line-height: 1.7;">
-      <li><strong>rig-core:</strong> Declarative LLM agent and tool framework with OpenAI, Anthropic, and local model support.</li>
-      <li><strong>candle:</strong> Minimalist, zero-Python ML framework by Hugging Face running local models on Metal & CUDA.</li>
-      <li><strong>tiktoken-rs:</strong> Blazing-fast BPE token counting without Python subprocess overhead.</li>
-      <li><strong>qdrant:</strong> Production vector database written entirely in Rust for maximum memory efficiency.</li>
-    </ul>
+  <!-- SSE Streaming Gateway -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">1. High-Throughput Token Streaming Gateway (SSE)</h2>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Node.js struggles with thousands of concurrent HTTP chunked/SSE connections due to V8 heap bloat. In Rust, Axum handles 100k+ SSE streams with zero allocations per frame using <code>tokio_stream</code> and async channels.</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code>use axum::{
+    response::sse::{Event, KeepAlive, Sse},
+    routing::post,
+    Json, Router,
+};
+use futures::stream::Stream;
+use serde::{Deserialize, Serialize};
+use std::{convert::Infallible, time::Duration};
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
+
+#[derive(Deserialize)]
+pub struct ChatRequest {
+    pub prompt: String,
+}
+
+pub async fn chat_stream_handler(
+    Json(req): Json&lt;ChatRequest&gt;,
+) -> Sse&lt;impl Stream&lt;Item = Result&lt;Event, Infallible&gt;&gt;&gt; {
+    let (tx, rx) = mpsc::channel::&lt;String&gt;(100);
+
+    // Spawn inference worker task
+    tokio::spawn(async move {
+        let tokens = vec!["Rust", " provides", " fearless", " concurrency", " for", " AI."];
+        for token in tokens {
+            tokio::time::sleep(Duration::from_millis(50)).await;
+            if tx.send(token.to_string()).await.is_err() {
+                break; // Client disconnected early
+            }
+        }
+    });
+
+    // Adapt mpsc receiver to SSE Stream
+    let stream = ReceiverStream::new(rx).map(|token| {
+        Ok(Event::default().data(token))
+    });
+
+    Sse::new(stream).keep_alive(KeepAlive::new().interval(Duration::from_secs(15)))
+}</code></pre>
+  </div>
+
+  <!-- Rig Core Agent Loop -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">2. Declarative Agent & Tool Execution with <code>rig-core</code></h2>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;"><code>rig-core</code> provides type-safe LLM tool orchestration equivalent to LangChain or Vercel AI SDK, but without memory leaks or runtime type coercion errors.</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code>use rig::{
+    completion::Prompt,
+    providers::openai::{Client, GPT_4O},
+    tool::Tool,
+};
+use serde::{Deserialize, Serialize};
+
+#[derive(Deserialize)]
+struct CalcArgs { a: f64, b: f64 }
+
+#[derive(Deserialize, Serialize)]
+struct CalcTool;
+
+impl Tool for CalcTool {
+    const NAME: &'static str = "calculate_sum";
+    type Error = std::io::Error;
+    type Args = CalcArgs;
+    type Output = f64;
+
+    async fn definition(&self, _prompt: String) -> rig::tool::ToolDefinition {
+        serde_json::from_value(serde_json::json!({
+            "name": "calculate_sum",
+            "description": "Calculates the sum of two floating point numbers",
+            "parameters": {
+                "type": "object",
+                "properties": { "a": {"type": "number"}, "b": {"type": "number"} },
+                "required": ["a", "b"]
+            }
+        })).unwrap()
+    }
+
+    async fn call(&self, args: Self::Args) -> Result&lt;Self::Output, Self::Error&gt; {
+        Ok(args.a + args.b)
+    }
+}
+
+pub async fn run_agent() -> Result&lt;String, Box&lt;dyn std::error::Error&gt;&gt; {
+    let client = Client::from_env();
+    let agent = client.agent(GPT_4O)
+        .preamble("You are a financial analysis agent.")
+        .tool(CalcTool)
+        .build();
+
+    let response = agent.prompt("What is 142.50 plus 391.25?").await?;
+    Ok(response)
+}</code></pre>
+  </div>
+
+  <!-- Local Candle Inference Loop -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">3. Zero-Python Local Inference with Hugging Face Candle</h2>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Run quantized LLMs directly in your microservice without spawning heavy Python or ONNX runtimes using Metal or CUDA hardware acceleration.</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code>use candle_core::{Device, Tensor};
+use candle_transformers::generation::LogitsProcessor;
+
+pub fn sample_next_token(
+    logits: &Tensor, 
+    logits_processor: &mut LogitsProcessor
+) -> Result&lt;u32, candle_core::Error&gt; {
+    // Select compute target: Metal (Apple Silicon), Cuda (Nvidia), or CPU
+    let device = Device::new_metal(0).unwrap_or(Device::Cpu);
+
+    // Extract raw logits for final token position: [batch_size, seq_len, vocab_size]
+    let next_token_logits = logits.squeeze(0)?.get(logits.dim(1)? - 1)?;
+
+    // Sample next token ID using temperature & top-p sampling
+    let next_token_id = logits_processor.sample(&next_token_logits)?;
+    Ok(next_token_id)
+}</code></pre>
   </div>
 </div>

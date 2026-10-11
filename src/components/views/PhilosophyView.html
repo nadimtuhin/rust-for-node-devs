@@ -1,16 +1,58 @@
-<div class="appendix-container" style="max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
+<div class="appendix-container" style="max-width: 960px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #ffedd5; color: #c2410c; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 10 • Philosophy</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">The Core Philosophy of Rust</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Memory safety without garbage collection, zero-cost abstractions, and fearless concurrency.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto;">Memory safety without garbage collection, zero-cost abstractions, and fearless concurrency explained rigorously.</p>
   </div>
 
-  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">The 3 Pillars of Rust</h2>
-    <ol style="padding-left: 1.25rem; color: #475569; line-height: 1.8;">
-      <li><strong>Safety:</strong> Memory safety and thread safety without Garbage Collector pause spikes.</li>
-      <li><strong>Speed:</strong> Zero-cost abstractions that compile directly to raw machine instructions.</li>
-      <li><strong>Concurrency:</strong> Compile-time thread safety that turns data races into compile errors.</li>
-    </ol>
+  <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+    <!-- Pillar 1 -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+        <span style="background: #fee2e2; color: #dc2626; padding: 0.25rem 0.65rem; border-radius: 6px; font-weight: 800; font-size: 0.85rem;">PILLAR 1</span>
+        <h2 style="font-size: 1.35rem; font-weight: 700; margin: 0; color: #0f172a;">Safety: Compile-Time Ownership Over Tracing GC</h2>
+      </div>
+      <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
+        Node.js relies on V8's Generational Tracing Garbage Collector (Scavenger + Mark-Sweep-Compact), which introduces non-deterministic latency spikes (Stop-The-World pauses) and non-deterministic memory spikes.
+      </p>
+      <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
+        Rust eliminates GC pauses entirely via an <strong>Affine Type System</strong>. Every value has a single owner. Lifetimes and borrow rules enforce <code>Aliasing XOR Mutability</code> (you may have either multiple immutable references <code>&T</code> OR exactly one exclusive mutable reference <code>&mut T</code>, but never both). This statically prevents use-after-free, double-free, dangling pointers, and iterator invalidation before code ever compiles.
+      </p>
+    </div>
+
+    <!-- Pillar 2 -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+        <span style="background: #fef3c7; color: #d97706; padding: 0.25rem 0.65rem; border-radius: 6px; font-weight: 800; font-size: 0.85rem;">PILLAR 2</span>
+        <h2 style="font-size: 1.35rem; font-weight: 700; margin: 0; color: #0f172a;">Speed: The Zero-Cost Abstraction Principle</h2>
+      </div>
+      <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
+        Bjarne Stroustrup's maxim is strictly adhered to: <em>"What you don't use, you don't pay for. And what you do use, you couldn't hand code any better."</em>
+      </p>
+      <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
+        In TypeScript, high-level abstractions like <code>Array.prototype.map().filter()</code> allocate intermediate arrays and dynamic closures on every pipeline step. In Rust, Iterators compile via <strong>monomorphization</strong> and LLVM loop vectorization into raw pointer arithmetic and SIMD assembly instructions—matching or beating hand-written C loops with zero heap overhead.
+      </p>
+    </div>
+
+    <!-- Pillar 3 -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+        <span style="background: #dbeafe; color: #2563eb; padding: 0.25rem 0.65rem; border-radius: 6px; font-weight: 800; font-size: 0.85rem;">PILLAR 3</span>
+        <h2 style="font-size: 1.35rem; font-weight: 700; margin: 0; color: #0f172a;">Fearless Concurrency: The Send & Sync Auto Traits</h2>
+      </div>
+      <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
+        Node.js sidestepped multi-threaded concurrency entirely by restricting execution to a single event loop thread, paying heavy IPC serialization overhead when scaling via <code>worker_threads</code> or cluster forks.
+      </p>
+      <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
+        Rust enables multi-core shared-memory parallelism without data races. The compiler automatically derives two marker traits:
+      </p>
+      <ul style="color: #475569; line-height: 1.7; font-size: 0.95rem; padding-left: 1.25rem;">
+        <li><code>Send</code>: Safe to transfer ownership across thread boundaries.</li>
+        <li><code>Sync</code>: Safe to share references across threads (<code>&T</code> is <code>Send</code>).</li>
+      </ul>
+      <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
+        Attempting to share non-thread-safe state (such as <code>Rc&lt;RefCell&lt;T&gt;&gt;</code>) across threads fails at compile time with a clear error pointing out the missing <code>Send/Sync</code> implementation.
+      </p>
+    </div>
   </div>
 </div>

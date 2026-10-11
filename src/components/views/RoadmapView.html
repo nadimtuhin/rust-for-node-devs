@@ -1,0 +1,275 @@
+<div class="appendix-container" style="max-width: 1040px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
+  <!-- Header -->
+  <div style="text-align: center; margin-bottom: 2.5rem;">
+    <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #ffedd5; color: #c2410c; padding: 0.35rem 0.95rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem; border: 1px solid #fed7aa; margin-bottom: 0.75rem;">
+      <span>🧭 Appendix 14 • Official Roadmap Track</span>
+    </div>
+    <h1 style="font-size: 2.4rem; font-weight: 800; margin: 0.5rem 0; color: #0f172a; letter-spacing: -0.02em;">Rust Developer Roadmap</h1>
+    <p style="font-size: 1.15rem; color: #64748b; max-width: 780px; margin: 0 auto; line-height: 1.6;">
+      The definitive step-by-step curriculum aligned with <a href="https://roadmap.sh/rust" target="_blank" rel="noopener noreferrer" style="color: #c2410c; font-weight: 600; text-decoration: underline;">roadmap.sh/rust</a>, translated specifically into concrete systems models for JavaScript & TypeScript engineers.
+    </p>
+  </div>
+
+  <!-- Interactive / Progress Visualizer Bar -->
+  <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #f8fafc; border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+      <div>
+        <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #fbbf24;">🗺️ roadmap.sh/rust Milestone Path</h3>
+        <p style="margin: 0.25rem 0 0; color: #94a3b8; font-size: 0.9rem;">From V8 runtime mental models to zero-cost, bare-metal Rust mastery.</p>
+      </div>
+      <a href="https://roadmap.sh/rust" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 0.4rem; background: #c2410c; color: #fff; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-decoration: none;">
+        View on roadmap.sh ↗
+      </a>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 0.75rem; font-size: 0.8rem; text-align: center;">
+      <div style="background: rgba(255,255,255,0.06); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+        <strong style="color: #38bdf8; display: block; font-size: 1rem;">Stage 1</strong> Basics & Syntax
+      </div>
+      <div style="background: rgba(255,255,255,0.06); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+        <strong style="color: #f43f5e; display: block; font-size: 1rem;">Stage 2</strong> Ownership & Memory
+      </div>
+      <div style="background: rgba(255,255,255,0.06); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+        <strong style="color: #a855f7; display: block; font-size: 1rem;">Stage 3</strong> Types, Enums & Errors
+      </div>
+      <div style="background: rgba(255,255,255,0.06); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+        <strong style="color: #fb923c; display: block; font-size: 1rem;">Stage 4</strong> Traits & Generics
+      </div>
+      <div style="background: rgba(255,255,255,0.06); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+        <strong style="color: #4ade80; display: block; font-size: 1rem;">Stage 5</strong> Async & Tokio
+      </div>
+      <div style="background: rgba(255,255,255,0.06); padding: 0.75rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+        <strong style="color: #facc15; display: block; font-size: 1rem;">Stage 6</strong> Microservices & Prod
+      </div>
+    </div>
+  </div>
+
+  <!-- Roadmap Sections Breakdown -->
+  <div style="display: flex; flex-direction: column; gap: 2rem;">
+
+    <!-- 1. Introduction & Tooling -->
+    <section style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h2 style="font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 0.6rem;">
+          <span style="background: #e0f2fe; color: #0284c7; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: 800;">01</span>
+          Toolchain, Installation & Cargo Essentials
+        </h2>
+        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">roadmap.sh Milestone: Setup</span>
+      </div>
+      <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.25rem;">
+        In the Node.js universe, version managers like <code>nvm</code> or <code>fnm</code> manage Node runtimes while <code>npm</code>/<code>pnpm</code> handle package dependencies. In Rust, <code>rustup</code> is the unified toolchain manager that installs <code>rustc</code>, <code>cargo</code>, <code>rust-analyzer</code>, and cross-compilation targets.
+      </p>
+      
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+          <h4 style="margin: 0 0 0.5rem; color: #0f172a; font-size: 0.95rem;">Key Roadmap Concepts</h4>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #334155; line-height: 1.6;">
+            <li><code>rustup</code>: Toolchain channels (stable, beta, nightly)</li>
+            <li><code>cargo init</code>, <code>cargo build</code>, <code>cargo check</code></li>
+            <li><code>rust-analyzer</code> language server configuration</li>
+            <li>Playground vs Native compilation</li>
+          </ul>
+        </div>
+        <div style="background: #fff7ed; border: 1px solid #ffedd5; border-radius: 8px; padding: 1rem;">
+          <h4 style="margin: 0 0 0.5rem; color: #c2410c; font-size: 0.95rem;">Corresponding Book Chapters & Guides</h4>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #9a3412; line-height: 1.6;">
+            <li><a href="/chapter/basic_vars" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter B1: Variables, Mutability & Types</a></li>
+            <li><a href="/cargo-vs-npm" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Appendix 03: Cargo vs npm Deep Dive</a></li>
+            <li><a href="/troubleshooting" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Appendix 09: Diagnostics & Compiler Flags</a></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. Memory Safety & The Ownership System -->
+    <section style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h2 style="font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 0.6rem;">
+          <span style="background: #fee2e2; color: #dc2626; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: 800;">02</span>
+          Memory Management, Ownership & Borrowing
+        </h2>
+        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">roadmap.sh Milestone: Core Philosophy</span>
+      </div>
+      <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.25rem;">
+        Node.js developers rely on V8's Mark-and-Sweep Garbage Collector (Orinoco/Scavenger) to reclaim unreferenced heap allocations. Rust eliminates GC runtime pauses through compile-time Affine Types and RAII (Resource Acquisition Is Initialization), where memory is deterministically dropped when its single owning variable exits scope.
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+          <h4 style="margin: 0 0 0.5rem; color: #0f172a; font-size: 0.95rem;">Key Roadmap Concepts</h4>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #334155; line-height: 1.6;">
+            <li>Stack vs Heap allocations & cache locality</li>
+            <li>Single ownership rule & Move semantics</li>
+            <li>Shared (<code>&T</code>) vs Exclusive (<code>&mut T</code>) references</li>
+            <li>Non-Lexical Lifetimes (NLL) & lifetime annotations (<code>'a</code>)</li>
+          </ul>
+        </div>
+        <div style="background: #fff7ed; border: 1px solid #ffedd5; border-radius: 8px; padding: 1rem;">
+          <h4 style="margin: 0 0 0.5rem; color: #c2410c; font-size: 0.95rem;">Corresponding Book Chapters & Guides</h4>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #9a3412; line-height: 1.6;">
+            <li><a href="/chapter/basic_ownership" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter B4: Ownership & Move Semantics</a></li>
+            <li><a href="/chapter/basic_lifetimes" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter B10: Lifetimes in 5 Minutes</a></li>
+            <li><a href="/borrow-checker" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Appendix 01: The Interactive Borrow Checker</a></li>
+            <li><a href="/philosophy" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Appendix 10: The Rust Philosophy (Affine Types)</a></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Type System, Enums & Error Handling -->
+    <section style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h2 style="font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 0.6rem;">
+          <span style="background: #f3e8ff; color: #9333ea; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: 800;">03</span>
+          Algebraic Types, Enums & Zero-Cost Error Handling
+        </h2>
+        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">roadmap.sh Milestone: Data Structures</span>
+      </div>
+      <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.25rem;">
+        In TypeScript, union types and nullable types (<code>null | undefined</code>) are checked at compile time but erased at runtime, leaving programs vulnerable to <code>TypeError: Cannot read properties of undefined</code>. Rust has no <code>null</code>. Instead, it utilizes Algebraic Data Types (ADTs) with <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code>, enforced through exhaustive pattern matching.
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+          <h4 style="margin: 0 0 0.5rem; color: #0f172a; font-size: 0.95rem;">Key Roadmap Concepts</h4>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #334155; line-height: 1.6;">
+            <li>Structs (tuple, named, unit) & <code>impl</code> methods</li>
+            <li>Enums with data payloads (tagged unions)</li>
+            <li><code>match</code> expressions & <code>if let</code> destructuring</li>
+            <li>The <code>?</code> (try) operator for early error return</li>
+            <li><code>thiserror</code> for domain errors & <code>anyhow</code> for applications</li>
+          </ul>
+        </div>
+        <div style="background: #fff7ed; border: 1px solid #ffedd5; border-radius: 8px; padding: 1rem;">
+          <h4 style="margin: 0 0 0.5rem; color: #c2410c; font-size: 0.95rem;">Corresponding Book Chapters & Guides</h4>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #9a3412; line-height: 1.6;">
+            <li><a href="/chapter/basic_option" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter B6: Option instead of null/undefined</a></li>
+            <li><a href="/chapter/basic_result" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter B7: Result&lt;T, E&gt; instead of try/catch</a></li>
+            <li><a href="/chapter/error_anyhow_thiserror" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter 24: thiserror vs anyhow Patterns</a></li>
+            <li><a href="/cheatsheet" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Appendix 13: TypeScript vs Rust Rosetta Cheatsheet</a></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Traits, Generics & Smart Pointers -->
+    <section style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h2 style="font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 0.6rem;">
+          <span style="background: #ffedd5; color: #ea580c; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: 800;">04</span>
+          Traits, Monomorphization & Smart Pointers
+        </h2>
+        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">roadmap.sh Milestone: Advanced Language</span>
+      </div>
+      <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.25rem;">
+        Unlike TypeScript interfaces, which rely on structural subtyping, Rust traits provide behavioral contracts with zero runtime overhead via static dispatch (monomorphization). When dynamic dispatch is required, <code>dyn Trait</code> produces a vtable. Smart pointers (<code>Box</code>, <code>Rc</code>, <code>Arc</code>, <code>Mutex</code>, <code>RwLock</code>) provide explicit shared ownership and interior mutability.
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+          <h4 style="margin: 0 0 0.5rem; color: #0f172a; font-size: 0.95rem;">Key Roadmap Concepts</h4>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #334155; line-height: 1.6;">
+            <li>Traits: definition, derive macros (<code>#[derive(Debug, Clone)]</code>)</li>
+            <li>Static dispatch (Generics + Trait bounds) vs Dynamic dispatch (<code>Box&lt;dyn Trait&gt;</code>)</li>
+            <li><code>Box&lt;T&gt;</code> for heap allocation & recursive structures</li>
+            <li><code>Rc&lt;T&gt;</code> vs <code>Arc&lt;T&gt;</code>: Single-threaded vs Thread-safe reference counting</li>
+            <li><code>RefCell&lt;T&gt;</code> vs <code>Mutex&lt;T&gt;</code> / <code>RwLock&lt;T&gt;</code> interior mutability</li>
+          </ul>
+        </div>
+        <div style="background: #fff7ed; border: 1px solid #ffedd5; border-radius: 8px; padding: 1rem;">
+          <h4 style="margin: 0 0 0.5rem; color: #c2410c; font-size: 0.95rem;">Corresponding Book Chapters & Guides</h4>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #9a3412; line-height: 1.6;">
+            <li><a href="/chapter/basic_traits" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter B8: Traits vs TypeScript Interfaces</a></li>
+            <li><a href="/chapter/basic_smart_pointers" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter B9: Smart Pointers (Box, Rc, Arc)</a></li>
+            <li><a href="/chapter/arc_mutex" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter 28: Arc&lt;Mutex&lt;T&gt;&gt; for Shared State</a></li>
+            <li><a href="/chapter/dynamic_dispatch" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter 30: Static vs Dynamic Dispatch</a></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Concurrency, Async & Tokio -->
+    <section style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h2 style="font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 0.6rem;">
+          <span style="background: #dcfce7; color: #16a34a; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: 800;">05</span>
+          Concurrency, Fearless Multi-Threading & Tokio
+        </h2>
+        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">roadmap.sh Milestone: Concurrency & Async</span>
+      </div>
+      <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.25rem;">
+        Node.js utilizes a single-threaded libuv event loop where long-running CPU calculations block all incoming HTTP requests. In Rust, the <code>Send</code> and <code>Sync</code> marker traits mathematically guarantee that multi-threaded code is free of data races. Asynchronous Rust uses zero-cost state machines that only execute when polled by a work-stealing executor like Tokio.
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+          <h4 style="margin: 0 0 0.5rem; color: #0f172a; font-size: 0.95rem;">Key Roadmap Concepts</h4>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #334155; line-height: 1.6;">
+            <li>OS threads (<code>std::thread::spawn</code>) vs Async green tasks (<code>tokio::spawn</code>)</li>
+            <li>Message passing with CSP channels (<code>mpsc</code>, <code>broadcast</code>, <code>watch</code>, <code>oneshot</code>)</li>
+            <li><code>Future</code> trait, <code>Pin&lt;P&gt;</code>, and cooperative polling loops</li>
+            <li>Task budgeting, cooperative yield (<code>tokio::task::yield_now</code>), cancellation tokens</li>
+          </ul>
+        </div>
+        <div style="background: #fff7ed; border: 1px solid #ffedd5; border-radius: 8px; padding: 1rem;">
+          <h4 style="margin: 0 0 0.5rem; color: #c2410c; font-size: 0.95rem;">Corresponding Book Chapters & Guides</h4>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #9a3412; line-height: 1.6;">
+            <li><a href="/chapter/tokio_spawn" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter 21: Promise.all vs tokio::join! & spawn</a></li>
+            <li><a href="/chapter/channels_sync" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter 25: Tokio Channels (mpsc, broadcast, oneshot)</a></li>
+            <li><a href="/chapter/cancellation_tokens" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter 23: Cancellation Tokens & AbortHandles</a></li>
+            <li><a href="/async-tokio" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Appendix 02: Async Rust & Tokio Architecture</a></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Ecosystem & Production Services -->
+    <section style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+        <h2 style="font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 0.6rem;">
+          <span style="background: #fef9c3; color: #ca8a04; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: 800;">06</span>
+          Web Services, Databases & Production Deployment
+        </h2>
+        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">roadmap.sh Milestone: Ecosystem</span>
+      </div>
+      <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.25rem;">
+        Transitioning from Express/Fastify/NestJS to high-throughput Rust web microservices. The modern Rust production stack centers around <strong>Axum</strong> (built atop Tower and Hyper), compile-time checked SQL with <strong>SQLx</strong>, asynchronous ORM with <strong>SeaORM</strong>, high-performance serialization via <strong>Serde</strong>, and multi-stage <strong>cargo-chef</strong> Distroless Docker containers.
+      </p>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
+          <h4 style="margin: 0 0 0.5rem; color: #0f172a; font-size: 0.95rem;">Key Roadmap Concepts</h4>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #334155; line-height: 1.6;">
+            <li>Web Frameworks: Axum 0.7+, Actix-web, Tower middleware</li>
+            <li>Databases: SQLx (compile-time SQL validation), SeaORM</li>
+            <li>Serialization: <code>serde</code>, <code>serde_json</code> with zero-copy deserialization</li>
+            <li>Production Containers: <code>cargo-chef</code> recipe caching & Distroless images (&lt;20MB)</li>
+          </ul>
+        </div>
+        <div style="background: #fff7ed; border: 1px solid #ffedd5; border-radius: 8px; padding: 1rem;">
+          <h4 style="margin: 0 0 0.5rem; color: #c2410c; font-size: 0.95rem;">Corresponding Book Chapters & Guides</h4>
+          <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #9a3412; line-height: 1.6;">
+            <li><a href="/chapter/axum_api" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter 1: Express.js vs Axum HTTP Server</a></li>
+            <li><a href="/chapter/sqlx_postgres" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Chapter 13: pg/Prisma vs SQLx with Postgres</a></li>
+            <li><a href="/microservice" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Appendix 04: Production Axum Microservice Architecture</a></li>
+            <li><a href="/docker" style="color: #c2410c; text-decoration: underline; font-weight: 600;">Appendix 05: Distroless Docker & cargo-chef</a></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Bottom CTA / Navigation -->
+  <div style="text-align: center; margin-top: 3.5rem; padding-top: 2rem; border-top: 1px solid #e2e8f0;">
+    <h3 style="font-size: 1.25rem; font-weight: 700; color: #0f172a; margin-bottom: 0.5rem;">Ready to begin your journey?</h3>
+    <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 1.5rem;">Jump into the interactive 3-column studio with live Rust compilation.</p>
+    <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+      <a href="/" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #b7410e; color: #ffffff; padding: 0.75rem 1.75rem; border-radius: 8px; font-weight: 600; text-decoration: none; box-shadow: 0 4px 6px -1px rgba(183, 65, 14, 0.2);">
+        ⚡ Open Interactive Studio
+      </a>
+      <a href="/chapters" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #f1f5f9; color: #334155; padding: 0.75rem 1.75rem; border-radius: 8px; font-weight: 600; text-decoration: none; border: 1px solid #cbd5e1;">
+        📚 Browse All 56 Chapters
+      </a>
+    </div>
+  </div>
+</div>

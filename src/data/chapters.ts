@@ -277,7 +277,7 @@ export const chaptersData: Record<string, Chapter> = {
     "desc": "BullMQ handles retries with backoff strategies. In Rust, exponential backoff with jitter prevents thundering herd problems when downstream services experience outages.",
     "nodeCode": "// BullMQ backoff config\n{ attempts: 5, backoff: { type: 'exponential', delay: 1000 } }",
     "why": "Adding randomized jitter to exponential backoff prevents synchronized retries from overwhelming recovering services.",
-    "code": "fn calculate_backoff(attempt: u32, base_ms: u64, max_ms: u64) -> u64 {\n    let exp = 2u64.pow(attempt);\n    let delay = base_ms * exp;\n    std::cmp::min(delay, max_ms)\n}\n\nfn main() {\n    for attempt in 0..5 {\n        let delay = calculate_backoff(attempt, 100, 5000);\n        println!(\"Retry attempt {}: backoff delay {} ms\", attempt + 1, delay);\n    }\n}"
+    "code": "fn calculate_backoff_with_jitter(attempt: u32, base_ms: u64, max_ms: u64, jitter_percent: f64) -> u64 {\n    let exp = 2u64.pow(attempt);\n    let delay = (base_ms * exp) as f64 * (1.0 + jitter_percent);\n    std::cmp::min(delay as u64, max_ms)\n}\n\nfn main() {\n    let jitter_samples = [0.05, -0.02, 0.08, -0.04, 0.02];\n    for attempt in 0..5 {\n        let ms = calculate_backoff_with_jitter(attempt, 100, 5000, jitter_samples[attempt as usize]);\n        println!(\"Retry attempt {}: backoff with jitter {} ms\", attempt + 1, ms);\n    }\n    println!(\"[DLQ Status] Exhausted 5 retry attempts -> Routed message to Dead-Letter Queue (DLQ)\\n\");\n}"
   },
   "tokio_spawn": {
     "num": "21",
@@ -493,7 +493,7 @@ export const chaptersData: Record<string, Chapter> = {
     "desc": "Verify if a string is a palindrome considering only alphanumeric characters and ignoring case. Solved in Rust using two pointers over an iterator with zero heap allocations.",
     "nodeCode": "// JS Valid Palindrome\nconst clean = s.toLowerCase().replace(/[^a-z0-9]/g, '');\nreturn clean === clean.split('').reverse().join('');",
     "why": "Two-pointer in-place traversal avoids allocating new filtered strings.",
-    "code": "fn is_palindrome(s: &str) -> bool {\n    let chars: Vec<char> = s.chars()\n        .filter(|c| c.is_alphanumeric())\n        .map(|c| c.to_ascii_lowercase())\n        .collect();\n\n    if chars.is_empty() { return true; }\n\n    let (mut left, mut right) = (0, chars.len() - 1);\n    while left < right {\n        if chars[left] != chars[right] {\n            return false;\n        }\n        left += 1;\n        right -= 1;\n    }\n    true\n}\n\nfn main() {\n    println!(\"'A man, a plan, a canal: Panama' is palindrome? {}\", is_palindrome(\"A man, a plan, a canal: Panama\"));\n    println!(\"'race a car' is palindrome? {}\", is_palindrome(\"race a car\"));\n}"
+    "code": "fn is_palindrome(s: &str) -> bool {\n    let iter = s.chars()\n        .filter(|c| c.is_alphanumeric())\n        .flat_map(|c| c.to_lowercase());\n    iter.clone().eq(iter.rev())\n}\n\nfn main() {\n    println!(\"'A man, a plan, a canal: Panama' is palindrome? {}\", is_palindrome(\"A man, a plan, a canal: Panama\"));\n    println!(\"'race a car' is palindrome? {}\", is_palindrome(\"race a car\"));\n}"
   },
   "lc_reverse_linked_list": {
     "num": "LC206",

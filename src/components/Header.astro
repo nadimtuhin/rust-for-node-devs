@@ -139,6 +139,13 @@ const currentGuide = guideLinks.find(g => pathname === g.href);
       }
     });
 
+    
+    wrapper.addEventListener('focusout', (e) => {
+      if (!wrapper.contains((e as FocusEvent).relatedTarget as Node)) {
+        toggleDropdown(false);
+      }
+    });
+
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && wrapper.classList.contains('is-open')) {
         toggleDropdown(false);

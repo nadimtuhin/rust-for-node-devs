@@ -1035,6 +1035,30 @@ header {
   border-radius: 4px;
 }
 
+
+/* Rust Mental Model Callout Box */
+.rust-why-box {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-left: 4px solid var(--rust-primary);
+}
+.rust-why-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--rust-primary);
+  margin-bottom: 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.rust-why-desc {
+  font-size: 0.88rem;
+  color: #7c2d12;
+  line-height: 1.55;
+}
+
 .go-why-box {
   background: var(--emerald-bg);
   border: 1px solid var(--emerald-border);

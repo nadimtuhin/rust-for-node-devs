@@ -4,13 +4,15 @@ interface Props {
   description?: string;
   canonicalPath?: string;
   breadcrumbs?: { name: string; item: string }[];
+  includeEditor?: boolean;
 }
 
 const {
   title = "Rust for Node.js Devs | Interactive GitBook & Live Compiler",
   description = "Learn Rust with live in-browser Rust Playground compiler, progressive lessons, side-by-side Node.js/TypeScript comparisons, and production systems architecture guides.",
   canonicalPath = Astro.url.pathname,
-  breadcrumbs = []
+  breadcrumbs = [],
+  includeEditor = true
 } = Astro.props;
 
 import '../styles/global.css';
@@ -19,6 +21,7 @@ const siteOrigin = "https://rust-for-node-devs.vercel.app";
 const cleanPath = canonicalPath.replace(/\/+$/, '') || '';
 const canonicalUrl = `${siteOrigin}${cleanPath}`;
 const ogImageUrl = `${siteOrigin}/og-image.png`;
+const ogImageAlt = "Rust for Node.js Developers - Interactive Masterclass Studio";
 
 const defaultBreadcrumbs = [
   { name: "Home", item: siteOrigin },
@@ -26,44 +29,49 @@ const defaultBreadcrumbs = [
 ];
 const activeBreadcrumbs = breadcrumbs.length > 0 ? breadcrumbs : defaultBreadcrumbs;
 
+const graphNodes: any[] = [
+  {
+    "@type": "WebSite",
+    "@id": `${siteOrigin}/#website`,
+    "url": siteOrigin,
+    "name": "Rust for Node.js Developers Masterclass Studio",
+    "description": "Interactive Rust learning platform and Rosetta Stone for Node.js and TypeScript developers.",
+    "inLanguage": "en-US",
+    "publisher": {
+      "@type": "Person",
+      "name": "Nadim Tuhin",
+      "url": "https://github.com/nadimtuhin"
+    }
+  },
+  {
+    "@type": "Course",
+    "@id": `${siteOrigin}/#course`,
+    "name": "Rust for Node.js & TypeScript Developers",
+    "description": "Comprehensive transition guide from single-threaded V8 JavaScript to fearless concurrency, memory safety without GC, and high-performance systems programming in Rust.",
+    "provider": {
+      "@type": "Person",
+      "name": "Nadim Tuhin",
+      "sameAs": "https://github.com/nadimtuhin"
+    }
+  }
+];
+
+if (activeBreadcrumbs.length > 1) {
+  graphNodes.push({
+    "@type": "BreadcrumbList",
+    "@id": `${canonicalUrl}/#breadcrumbs`,
+    "itemListElement": activeBreadcrumbs.map((bc, idx) => ({
+      "@type": "ListItem",
+      "position": idx + 1,
+      "name": bc.name,
+      "item": bc.item
+    }))
+  });
+}
+
 const structuredData = {
   "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "WebSite",
-      "@id": `${siteOrigin}/#website`,
-      "url": siteOrigin,
-      "name": "Rust for Node.js Developers Masterclass Studio",
-      "description": "Interactive Rust learning platform and Rosetta Stone for Node.js and TypeScript developers.",
-      "inLanguage": "en-US",
-      "publisher": {
-        "@type": "Person",
-        "name": "Nadim Tuhin",
-        "url": "https://github.com/nadimtuhin"
-      }
-    },
-    {
-      "@type": "Course",
-      "@id": `${siteOrigin}/#course`,
-      "name": "Rust for Node.js & TypeScript Developers",
-      "description": "Comprehensive transition guide from single-threaded V8 JavaScript to fearless concurrency, memory safety without GC, and high-performance systems programming in Rust.",
-      "provider": {
-        "@type": "Person",
-        "name": "Nadim Tuhin",
-        "sameAs": "https://github.com/nadimtuhin"
-      }
-    },
-    {
-      "@type": "BreadcrumbList",
-      "@id": `${canonicalUrl}/#breadcrumbs`,
-      "itemListElement": activeBreadcrumbs.map((bc, idx) => ({
-        "@type": "ListItem",
-        "position": idx + 1,
-        "name": bc.name,
-        "item": bc.item
-      }))
-    }
-  ]
+  "@graph": graphNodes
 };
 ---
 
@@ -82,6 +90,7 @@ const structuredData = {
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:alt" content={ogImageAlt} />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -89,16 +98,21 @@ const structuredData = {
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImageUrl} />
+    <meta name="twitter:image:alt" content={ogImageAlt} />
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/site.webmanifest" />
 
     <!-- CodeMirror Assets via CDN -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" />
-    <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-    <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/rust/rust.min.js"></script>
-    <script is:inline src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    {includeEditor && (
+      <>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" />
+        <script is:inline defer src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+        <script is:inline defer src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/rust/rust.min.js"></script>
+        <script is:inline defer src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+      </>
+    )}
 
     <!-- Schema.org Structured Data -->
     <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />

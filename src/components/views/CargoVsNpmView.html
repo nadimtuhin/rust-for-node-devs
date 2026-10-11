@@ -2,9 +2,10 @@
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #fef3c7; color: #d97706; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 03 • Package Management</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Cargo vs npm / pnpm</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Additive feature flags, duplicate dependency handling without node_modules, and workspace inheritance.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Additive feature flags, duplicate dependency handling without node_modules, workspace inheritance, pre-1.0 SemVer rules, and release profiles.</p>
   </div>
 
+  <!-- CLI Workflow -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">1. Rosetta Stone: Core CLI Workflow</h2>
     <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
@@ -50,13 +51,89 @@
     </table>
   </div>
 
+  <!-- node_modules & Deduplication -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">2. How Cargo Solves the node_modules Problem</h2>
-    <p>In Node.js, duplicate packages often lead to massive nested <code>node_modules</code> and runtime collisions (prototype pollution). Cargo compiles external crates once into target cache. If two dependencies require different major versions (e.g. <code>serde 1.0</code> and <code>serde 0.9</code>), Cargo mangles the symbols and compiles both side-by-side with zero collisions.</p>
+    <p style="color: #475569; line-height: 1.6;">In Node.js, duplicate packages often lead to massive nested <code>node_modules</code> and runtime collisions (prototype pollution). Cargo compiles external crates once into target cache. If two dependencies require different major versions (e.g. <code>serde 1.0</code> and <code>serde 0.9</code>), Cargo mangles the symbols and compiles both side-by-side with zero collisions.</p>
   </div>
 
-  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+  <!-- Additive Features -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">3. Additive Feature Flags</h2>
-    <p>In Rust, crate capabilities are gated behind compile-time feature flags. Features are <strong>strictly additive</strong>: if dependency A enables <code>serde = { features = ["derive"] }</code> and dependency B includes <code>serde</code> without features, Cargo activates the union for the entire compilation unit, preventing duplicate builds.</p>
+    <p style="color: #475569; line-height: 1.6;">In Rust, crate capabilities are gated behind compile-time feature flags. Features are <strong>strictly additive</strong>: if dependency A enables <code>serde = { features = ["derive"] }</code> and dependency B includes <code>serde</code> without features, Cargo activates the union for the entire compilation unit, preventing duplicate builds.</p>
+  </div>
+
+  <!-- Workspace Inheritance -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">4. Monorepos & Workspace Inheritance</h2>
+    <p style="color: #475569; line-height: 1.6;">Similar to pnpm catalogs or npm workspaces, Cargo workspaces allow defining dependency versions centrally in the root <code>Cargo.toml</code> using <code>[workspace.dependencies]</code>. Member crates inherit them without version drift.</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code># Root Cargo.toml
+[workspace]
+resolver = "2"
+members = ["crates/*", "services/*"]
+
+[workspace.dependencies]
+tokio = { version = "1.38", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "uuid"] }
+uuid = { version = "1.8", features = ["v4", "serde"] }
+
+# services/user-service/Cargo.toml
+[package]
+name = "user-service"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# Inherited directly from workspace root:
+tokio = { workspace = true }
+serde = { workspace = true }
+sqlx = { workspace = true }
+uuid = { workspace = true }</code></pre>
+  </div>
+
+  <!-- SemVer 0.x and 0.0.x rules -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">5. SemVer Differences: The 0.x & 0.0.x Pitfall</h2>
+    <p style="color: #475569; line-height: 1.6;">Node developers assume SemVer changes require a <code>^</code> or <code>~</code>. In Cargo, <strong>bare strings are Caret requirements by default</strong>. Furthermore, the leftmost non-zero number designates the breaking major release boundary:</p>
+    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem; margin-top: 1rem;">
+      <thead>
+        <tr style="border-bottom: 2px solid #e2e8f0; color: #64748b;">
+          <th style="padding: 0.5rem;">Requirement</th>
+          <th style="padding: 0.5rem;">Resolved Version Range</th>
+          <th style="padding: 0.5rem;">Cargo vs npm Behavior</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.5rem;"><code>"1.2.3"</code></td>
+          <td style="padding: 0.5rem;"><code>&gt;= 1.2.3, &lt; 2.0.0</code></td>
+          <td style="padding: 0.5rem;">Cargo implicitly adds <code>^</code>. In npm, <code>"1.2.3"</code> is pinned unless written as <code>"^1.2.3"</code>.</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.5rem;"><code>"0.2.3"</code></td>
+          <td style="padding: 0.5rem;"><code>&gt;= 0.2.3, &lt; 0.3.0</code></td>
+          <td style="padding: 0.5rem;"><strong>Minor is breaking!</strong> <code>0.2.4</code> is accepted, but <code>0.3.0</code> is rejected.</td>
+        </tr>
+        <tr>
+          <td style="padding: 0.5rem;"><code>"0.0.3"</code></td>
+          <td style="padding: 0.5rem;"><code>&gt;= 0.0.3, &lt; 0.0.4</code></td>
+          <td style="padding: 0.5rem;"><strong>Patch is breaking!</strong> Only <code>0.0.3</code> is accepted; <code>0.0.4</code> breaks compilation.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Profile Release Overrides -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">6. Production Compilation: Profile Release Overrides</h2>
+    <p style="color: #475569; line-height: 1.6;">Unlike Node.js where bundlers (esbuild/webpack) perform tree-shaking, Rust binaries are optimized at the LLVM level. Configure your root <code>Cargo.toml</code> to strip debug symbols, enable Link-Time Optimization (LTO), and enforce single-codegen unit emission for peak binary density and microsecond execution:</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code># Root Cargo.toml
+[profile.release]
+opt-level = 3        # Maximum aggressive optimizations (default: 3)
+lto = "thin"         # Cross-crate Link-Time Optimization with low build overhead
+codegen-units = 1    # Disables parallel codegen for max cross-function inlining
+panic = "abort"      # Strips unwind landing pads; slashes binary size by 15-25%
+strip = true         # Automatically strips symbols & debuginfo (equivalent to `strip binary`)</code></pre>
   </div>
 </div>

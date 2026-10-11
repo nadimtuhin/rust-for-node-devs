@@ -34,7 +34,7 @@ const groupedParts = chaptersList.reduce((acc, [key, ch]) => {
   </div>
 
   {Object.entries(groupedParts).map(([partName, items]) => (
-    <div>
+    <div class="sidebar-part-group">
       <div class="sidebar-part-label">{partName}</div>
       {items.map((item) => (
         <div 

@@ -190,6 +190,13 @@ const initialChapter = chaptersData[initialKey];
         if (match) visibleCount++;
       });
 
+      // Hide empty part headers
+      document.querySelectorAll('.sidebar-part-group').forEach(group => {
+        const hasVisible = Array.from(group.querySelectorAll('.chapter-nav-item'))
+          .some(item => (item as HTMLElement).style.display !== 'none');
+        (group as HTMLElement).style.display = hasVisible ? 'block' : 'none';
+      });
+
       if (notice) notice.style.display = visibleCount === 0 ? 'block' : 'none';
       const badge = document.getElementById('sidebarCountBadge');
       if (badge) badge.innerText = q ? `${visibleCount} Found` : '56 Chapters';

@@ -163,7 +163,7 @@ export const chapterInsights: Record<string, ChapterInsight> = {
   "select_race": {
     "proTip": "Ensure futures passed to `tokio::select!` are cancellation-safe before using them in production.",
     "footgun": "Branches in `tokio::select!` drop non-winning futures, which can drop half-written streams if not cancellation-safe.",
-    "archNote": "Cancellation in Rust is zero-cost: futures are simply dropped without requiring special cancellation tokens."
+    "archNote": "Dropping a future cancels it immediately, but stateful I/O operations must be carefully reviewed for cancellation safety."
   },
   "cancellation_tokens": {
     "proTip": "Pass child tokens to subordinate tasks using `token.child_token()` for hierarchical cancellation.",
@@ -233,7 +233,7 @@ export const chapterInsights: Record<string, ChapterInsight> = {
   "philo_raii_drop": {
     "proTip": "Use `std::mem::drop(val)` if you need to release a resource before the end of its enclosing scope.",
     "footgun": "Types implementing the `Copy` trait cannot implement the `Drop` trait.",
-    "archNote": "RAII Drop is injected by the compiler at AST lowering, guaranteeing zero garbage collection pauses."
+    "archNote": "RAII Drop is injected during MIR drop elaboration, guaranteeing deterministic cleanup with zero garbage collection pauses."
   },
   "philo_zero_cost": {
     "proTip": "Don't avoid high-level abstractions like iterators and closures out of fear of performance loss: they are zero-cost.",

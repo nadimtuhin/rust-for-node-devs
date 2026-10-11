@@ -1897,6 +1897,13 @@ main#main-content:not(.playground-column) {
 }
 
 @media (max-width: 860px) {
+  .studio-main-3col {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - 54px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
   /* GitBook single scroll container on phone & tablet */
   .studio-container,
   .gitbook-container {

@@ -66,7 +66,19 @@ const initialChapter = chaptersData[initialKey];
           indentUnit: 4,
           tabSize: 4,
           lineWrapping: true,
-          viewportMargin: Infinity
+          viewportMargin: 20,
+      extraKeys: {
+        "Cmd-Enter": function() { executeRustCode(); },
+        "Ctrl-Enter": function() { executeRustCode(); },
+        "Cmd-K": function() {
+          const input = document.getElementById('lessonSearchInput');
+          if (input) { input.focus(); input.select(); }
+        },
+        "Ctrl-K": function() {
+          const input = document.getElementById('lessonSearchInput');
+          if (input) { input.focus(); input.select(); }
+        }
+      }
         });
       }
 
@@ -241,6 +253,20 @@ const initialChapter = chaptersData[initialKey];
       }
     }
 
+    
+    function ansiToHtml(text) {
+      if (!text) return '';
+      return text
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\x1b\[31(?:;1)?m/g, '<span style="color:#f87171;font-weight:bold;">')
+        .replace(/\x1b\[33(?:;1)?m/g, '<span style="color:#fbbf24;font-weight:bold;">')
+        .replace(/\x1b\[32(?:;1)?m/g, '<span style="color:#4ade80;font-weight:bold;">')
+        .replace(/\x1b\[36(?:;1)?m/g, '<span style="color:#38bdf8;font-weight:bold;">')
+        .replace(/\x1b\[1m/g, '<span style="font-weight:bold;color:#f8fafc;">')
+        .replace(/\x1b\[0m/g, '</span>')
+        .replace(/\x1b\[[0-9;]*m/g, '');
+    }
+
     async function executeRustCode() {
       const code = editor ? editor.getValue() : (window.chaptersData[activeKey] ? window.chaptersData[activeKey].code : '');
       const consoleArea = document.getElementById('consoleArea');
@@ -316,7 +342,7 @@ const initialChapter = chaptersData[initialKey];
             statusTag.innerText = `Exit 0 • ${elapsed}ms`;
           }
         }
-      } catch (err: any) {
+      } catch (err) {
       if (err.name === 'AbortError') {
         const latency = Math.round(performance.now() - startTime);
         if (statusLatency) statusLatency.innerText = latency + 'ms';

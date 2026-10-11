@@ -18,5 +18,21 @@
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h3 style="margin-top: 0; color: #0f172a;">Q3: What is Pin&lt;&amp;mut T&gt; and why is it essential for async Rust?</h3>
     <p style="color: #475569; line-height: 1.6;">Async functions compile into state machines. When a future holds references across an <code>.await</code> point, it becomes a <strong>self-referential struct</strong> (fields pointing to other fields inside the same struct). If moved in memory, internal pointers become dangling pointers! <code>Pin</code> wraps a pointer to guarantee the underlying data will never move in memory before being dropped.</p>
+  
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h3 style="margin-top: 0; color: #0f172a; font-size: 1.15rem;">Q4: When should you choose <code>std::sync::Mutex</code> vs <code>tokio::sync::Mutex</code> vs <code>RwLock</code>?</h3>
+    <p style="color: #475569; line-height: 1.6; font-size: 0.95rem;">
+      Use <strong><code>std::sync::Mutex</code></strong> for short, uncontended in-memory operations that never yield across <code>.await</code> points (it avoids async allocation overhead). Use <strong><code>tokio::sync::Mutex</code></strong> ONLY when the lock guard must be held across an <code>.await</code> boundary. Choose <strong><code>RwLock</code></strong> only when reads vastly exceed writes (&gt;90% reads) with non-trivial critical sections, otherwise the atomic state tracking overhead of <code>RwLock</code> will be slower than an uncontended Mutex.
+    </p>
   </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h3 style="margin-top: 0; color: #0f172a; font-size: 1.15rem;">Q5: What is Rust's precise RAII drop order for variables and struct fields?</h3>
+    <p style="color: #475569; line-height: 1.6; font-size: 0.95rem;">
+      1. <strong>Local variables</strong> in a function scope are dropped in <em>reverse declaration order</em> (LIFO: last declared is dropped first).<br/>
+      2. <strong>Struct fields</strong> and tuple elements are dropped in <em>declaration order</em> (top-to-bottom: first field is dropped first).<br/>
+      3. Array and slice elements are dropped sequentially from index 0 to n-1.
+    </p>
+  </div>
+</div>
 </div>

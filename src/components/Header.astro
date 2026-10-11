@@ -1,0 +1,113 @@
+---
+const pathname = Astro.url.pathname.replace(/\/$/, '') || '/';
+
+const isStudio = pathname === '/' || pathname.startsWith('/chapter/');
+const isChapters = pathname === '/chapters';
+
+const guideLinks = [
+  { href: '/borrow-checker', icon: '🦀', label: 'Borrow Checker' },
+  { href: '/async-tokio', icon: '⚡', label: 'Async & Tokio' },
+  { href: '/cargo-vs-npm', icon: '📦', label: 'Cargo vs npm' },
+  { href: '/microservice', icon: '📂', label: 'Axum Microservice' },
+  { href: '/docker', icon: '🐳', label: 'Distroless Docker' },
+  { href: '/testing', icon: '🧪', label: 'Testing & Mocks' },
+  { href: '/ai-agents', icon: '🦾', label: 'AI & Rust Agents' },
+  { href: '/interviews', icon: '🎯', label: 'Interview Q&A' },
+  { href: '/troubleshooting', icon: '🛠️', label: 'Diagnostics & Valgrind' },
+  { href: '/philosophy', icon: '🧠', label: 'Rust Philosophy' },
+  { href: '/pitfalls', icon: '⚠️', label: 'Footguns & Pitfalls' },
+  { href: '/leetcode', icon: '🧩', label: 'LeetCode in Rust' },
+  { href: '/cheatsheet', icon: '📖', label: 'Rosetta Cheatsheet' },
+];
+
+const currentGuide = guideLinks.find(g => pathname === g.href);
+---
+
+<header role="banner">
+  <a href="/" class="brand" aria-label="Rust for Node.js Developers Book Home">
+    <span aria-hidden="true">📖 ➔ 🦀</span>
+    <span>Rust for Node.js Developers</span>
+    <span class="badge" aria-label="Interactive Book with 56 Chapters">The Book • 56 Chapters</span>
+  </a>
+  
+  <nav class="header-nav-scroll" role="navigation" aria-label="Site Navigation">
+    <a href="/" class={`tab-toggle ${isStudio ? 'active' : ''}`} aria-current={isStudio ? 'page' : undefined}>⚡ Studio</a>
+    <a href="/chapters" class={`tab-toggle ${isChapters ? 'active' : ''}`} aria-current={isChapters ? 'page' : undefined}>📚 Chapters</a>
+
+    {currentGuide && (
+      <a href={currentGuide.href} class="tab-toggle active" aria-current="page">
+        <span>{currentGuide.icon} {currentGuide.label}</span>
+      </a>
+    )}
+
+    <div class="nav-dropdown-wrapper">
+      <button 
+        type="button" 
+        class="tab-toggle dropdown-trigger" 
+        id="guidesDropdownBtn"
+        aria-haspopup="true" 
+        aria-expanded="false"
+        aria-controls="guidesDropdownMenu"
+        aria-label="Toggle architecture guides and appendices menu"
+      >
+        <span>📑 {currentGuide ? 'All Appendices' : 'Appendices'}</span>
+        <span class="dropdown-chevron" aria-hidden="true">▾</span>
+      </button>
+
+      <div id="guidesDropdownMenu" class="dropdown-menu" role="menu" aria-labelledby="guidesDropdownBtn">
+        <div class="dropdown-header">13 Appendices & Architecture Guides</div>
+        <div class="dropdown-grid">
+          {guideLinks.map(guide => (
+            <a 
+              href={guide.href} 
+              class={`dropdown-item ${pathname === guide.href ? 'active-dropdown-item' : ''}`}
+              role="menuitem"
+            >
+              <span class="guide-item-icon">{guide.icon}</span>
+              <span class="guide-item-label">{guide.label}</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <a href="https://github.com/nadimtuhin/rust-for-node-devs" target="_blank" rel="noopener noreferrer" class="github-link-btn" aria-label="View Rust for Node Developers repository on GitHub (opens in a new tab)">
+    <span>GitHub ★</span>
+  </a>
+</header>
+
+<script>
+  const wrapper = document.querySelector('.nav-dropdown-wrapper');
+  const trigger = document.getElementById('guidesDropdownBtn');
+  const menu = document.getElementById('guidesDropdownMenu');
+
+  if (wrapper && trigger && menu) {
+    function toggleDropdown(open?: boolean) {
+      if (!wrapper || !trigger) return;
+      const isCurrentlyOpen = wrapper.classList.contains('is-open');
+      const shouldOpen = open !== undefined ? open : !isCurrentlyOpen;
+      
+      wrapper.classList.toggle('is-open', shouldOpen);
+      trigger.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+    }
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleDropdown();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!wrapper.contains(e.target as Node)) {
+        toggleDropdown(false);
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && wrapper.classList.contains('is-open')) {
+        toggleDropdown(false);
+        trigger.focus();
+      }
+    });
+  }
+</script>

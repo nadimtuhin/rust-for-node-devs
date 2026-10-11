@@ -1,0 +1,145 @@
+---
+// Lesson Detail Component for Rust
+interface Props {
+  chapterKey?: string;
+}
+const { chapterKey = 'basic_vars' } = Astro.props;
+import { chaptersData } from '../data/chapters';
+import { chapterInsights } from '../data/chapterInsights';
+import { highlightJS } from '../utils/highlight';
+
+const chapter = chaptersData[chapterKey] || chaptersData['basic_vars'];
+const insight = chapterInsights[chapterKey] || chapterInsights['basic_vars'];
+const highlightedNodeCode = highlightJS(chapter.nodeCode);
+
+const keys = Object.keys(chaptersData);
+const currentIndex = keys.indexOf(chapterKey);
+const hasPrev = currentIndex > 0;
+const hasNext = currentIndex !== -1 && currentIndex < keys.length - 1;
+const prevTitle = hasPrev ? chaptersData[keys[currentIndex - 1]].title : '';
+const nextTitle = hasNext ? chaptersData[keys[currentIndex + 1]].title : '';
+---
+<article class="lesson-detail-panel gitbook-article-intro" id="detailPanel" aria-labelledby="detailTitle">
+  <div class="detail-badge-row gitbook-breadcrumb">
+    <div style="display: flex; align-items: center; gap: 0.6rem;">
+      <button id="sidebarExpandBtn" class="sidebar-expand-btn" onclick="toggleSidebar()" aria-label="Toggle Table of Contents sidebar" title="Toggle Table of Contents">☰ TOC</button>
+      <span class="part-tag" id="detailPartTag">{chapter.part}</span>
+    </div>
+    <div class="gitbook-top-nav-group">
+      <nav class="gitbook-top-pager" aria-label="Top chapter navigation">
+        <button 
+          id="btnTopPrevLesson" 
+          class={`gitbook-top-btn prev ${!hasPrev ? 'disabled' : ''}`} 
+          onclick="navigateLesson(-1)" 
+          aria-label="Navigate to previous chapter" 
+          title={hasPrev ? `Previous: ${prevTitle}` : undefined}
+          disabled={!hasPrev}
+        >
+          <span aria-hidden="true">←</span> Prev
+        </button>
+        <button 
+          id="btnTopNextLesson" 
+          class={`gitbook-top-btn next ${!hasNext ? 'disabled' : ''}`} 
+          onclick="navigateLesson(1)" 
+          aria-label="Navigate to next chapter" 
+          title={hasNext ? `Next: ${nextTitle}` : undefined}
+          disabled={!hasNext}
+        >
+          Next <span aria-hidden="true">→</span>
+        </button>
+      </nav>
+      <span class="gitbook-chapter-id" id="detailId">#{chapter.num}</span>
+    </div>
+  </div>
+
+  <h1 class="lesson-title gitbook-title" id="detailTitle">{chapter.title}</h1>
+  <p class="lesson-desc gitbook-desc" id="detailDesc">
+    {chapter.desc}
+  </p>
+
+  <div class="card-box node-box gitbook-comparison-box" role="region" aria-label="Node.js Code Comparison">
+    <div class="node-header-row">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span class="node-tag">🟢 Node.js / TS Equivalent</span>
+        <span class="node-file-tag">📄 index.js</span>
+      </div>
+      <button id="copyNodeBtn" class="copy-snippet-btn" onclick="copyNodeSnippet()" aria-label="Copy Node.js snippet to clipboard">📋 Copy</button>
+    </div>
+    <div class="node-code" id="detailNodeCode" tabindex="0" role="textbox" aria-readonly="true" aria-label="Node.js code example"><code set:html={highlightedNodeCode}></code></div>
+  </div>
+
+  <div class="card-box go-why-box gitbook-callout-box" role="region" aria-label="Rust Mental Model Rationale" style="border-left-color: #b7410e;">
+    <div class="go-why-title" style="color: #b7410e;"><span aria-hidden="true">🦀</span> The Rust Mental Model</div>
+    <p class="go-why-desc" id="detailGoWhy">
+      {chapter.why}
+    </p>
+  </div>
+
+  <!-- Deep Architecture Breakdown -->
+  <section class="chapter-insight-section" aria-label="Architectural Paradigm Comparison">
+    <div class="insight-card">
+      <h2 class="insight-heading">🦀 Rust Systems Deep Dive</h2>
+      <dl class="insight-definition-list">
+        <dt class="insight-term" style="color: #0369a1;">Pro Tip</dt>
+        <dd class="insight-desc" id="detailInsightProTip">{insight.proTip}</dd>
+        
+        <dt class="insight-term" style="color: #dc2626;">Footgun</dt>
+        <dd class="insight-desc" id="detailInsightFootgun">{insight.footgun}</dd>
+
+        <dt class="insight-term" style="color: #b7410e;">Arch Note</dt>
+        <dd class="insight-desc" id="detailInsightArchNote">{insight.archNote}</dd>
+      </dl>
+    </div>
+  </section>
+</article>
+
+<style>
+  .chapter-insight-section {
+    margin-top: 1.5rem;
+  }
+
+  .insight-card {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .insight-heading {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 1rem;
+    letter-spacing: -0.01em;
+  }
+
+  .insight-definition-list {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 0.75rem 1rem;
+    margin: 0;
+    align-items: baseline;
+  }
+
+  @media (max-width: 640px) {
+    .insight-definition-list {
+      grid-template-columns: 1fr;
+      gap: 0.25rem;
+    }
+  }
+
+  .insight-term {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .insight-desc {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: #334155;
+  }
+</style>

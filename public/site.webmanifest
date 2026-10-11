@@ -1,0 +1,14 @@
+{
+  "name": "Rust for Node.js Developers Masterclass Studio",
+  "short_name": "RustForNodeDevs",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ],
+  "theme_color": "#b7410e",
+  "background_color": "#0d1117",
+  "display": "standalone"
+}

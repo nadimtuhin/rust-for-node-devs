@@ -1,0 +1,60 @@
+<div class="appendix-container" style="max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
+  <div style="text-align: center; margin-bottom: 2.5rem;">
+    <span style="background: #ffedd5; color: #c2410c; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 01 • Core Mental Model</span>
+    <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Mastering the Rust Borrow Checker</h1>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">How to reason about Aliasing XOR Mutability, Non-Lexical Lifetimes (NLL), and why the borrow checker is your pair programmer.</p>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">1. The Golden Rule: Aliasing XOR Mutability</h2>
+    <p>In JavaScript, references are shared everywhere without restrictions. If three functions hold a reference to the same object, any of them can mutate it at any time. In single-threaded Node.js, this causes hard-to-trace bugs. In multi-threaded systems, it causes fatal data races.</p>
+    <p>Rust enforces a fundamental mathematical axiom at compile time:</p>
+    <div style="background: #f8fafc; border-left: 4px solid #b7410e; padding: 1rem 1.25rem; border-radius: 4px; font-weight: 600; font-size: 1.05rem; margin: 1.25rem 0;">
+      At any given time, for any resource T, you can have:<br>
+      • Multiple immutable references (<code>&T</code>) OR<br>
+      • Exactly one mutable reference (<code>&mut T</code>),<br>
+      <strong>NEVER BOTH AT THE SAME TIME.</strong>
+    </div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">2. Non-Lexical Lifetimes (NLL)</h2>
+    <p>In early versions of Rust, a reference lived until the end of its enclosing curly brace scope <code>}</code>. Since Rust 2018, the compiler uses <strong>Non-Lexical Lifetimes (NLL)</strong>: a borrow ends at its <em>last point of usage</em>.</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>let mut data = vec![1, 2, 3];
+
+let first = &data[0]; // Immutable borrow begins
+println!("First item: {}", first); // Last point of usage! Immutable borrow ends here.
+
+data.push(4); // Perfectly valid under NLL! No error.</code></pre>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">3. Escape Hatches when Ownership isn't Tree-shaped</h2>
+    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
+      <thead>
+        <tr style="border-bottom: 2px solid #e2e8f0; color: #64748b;">
+          <th style="padding: 0.75rem 0.5rem;">Pattern</th>
+          <th style="padding: 0.75rem 0.5rem;">Rust Primitive</th>
+          <th style="padding: 0.75rem 0.5rem;">JavaScript Analogy</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Shared Read-Only Ownership</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>Arc&lt;T&gt;</code> (or <code>Rc&lt;T&gt;</code>)</td>
+          <td style="padding: 0.75rem 0.5rem;">Standard JS object reference</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Shared Mutable State</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>Arc&lt;Mutex&lt;T&gt;&gt;</code></td>
+          <td style="padding: 0.75rem 0.5rem;">Global singleton with async locks</td>
+        </tr>
+        <tr>
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Read-Heavy Shared State</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>Arc&lt;RwLock&lt;T&gt;&gt;</code></td>
+          <td style="padding: 0.75rem 0.5rem;">In-memory cache with concurrent reads</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

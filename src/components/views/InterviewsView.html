@@ -1,0 +1,17 @@
+<div class="appendix-container" style="max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
+  <div style="text-align: center; margin-bottom: 2.5rem;">
+    <span style="background: #fee2e2; color: #b91c1c; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 08 • Career Preparation</span>
+    <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Senior Systems Interview Q&A</h1>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Master the deep technical questions asked at companies like Cloudflare, Discord, AWS, and Figma.</p>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h3 style="margin-top: 0; color: #0f172a;">Q1: What is the difference between String and &str in memory?</h3>
+    <p style="color: #475569; line-height: 1.6;"><code>String</code> is an owned, growable vector of UTF-8 bytes stored on the heap. Its stack representation is 24 bytes (pointer to heap buffer, capacity, and current length). In contrast, <code>&str</code> is a borrowed string slice consisting of only 16 bytes on the stack: a pointer to existing bytes (which can be on the heap, stack, or static binary data section) and length.</p>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h3 style="margin-top: 0; color: #0f172a;">Q2: Why can't you hold a std::sync::MutexGuard across an .await point in Tokio?</h3>
+    <p style="color: #475569; line-height: 1.6;">When a future yields at an <code>.await</code> point, the Tokio runtime may resume that task on a <em>different worker thread</em>. Standard OS mutexes (like pthread_mutex) require the unlocking thread to be the exact same thread that acquired the lock. Holding an OS mutex across await violates Send bounds or can cause catastrophic deadlocks. The fix is using <code>tokio::sync::Mutex</code> or scoping the lock guard to drop before the await.</p>
+  </div>
+</div>

@@ -1,0 +1,21 @@
+{
+  "name": "rust-for-node-devs",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Interactive, visual learning platform and live playground tailored for Node.js & TypeScript developers learning Rust.",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "test:e2e": "playwright test",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^5.4.2"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.0",
+    "typescript": "^5.7.3"
+  }
+}

@@ -1,0 +1,12 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import ViewComponent from '../components/views/InterviewsView.astro';
+---
+
+<Layout title="Senior Rust Interview Q&A | Rust for Node Devs" description="High-frequency senior systems engineering interview questions covering memory layout, Tokio internals, and borrow checker subtleties.">
+  <Header />
+  <main id="main-content" role="main" style="min-height: calc(100vh - 54px); overflow-y: auto;">
+    <ViewComponent />
+  </main>
+</Layout>

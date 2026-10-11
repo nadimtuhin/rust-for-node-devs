@@ -1,0 +1,47 @@
+<div class="appendix-container" style="max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
+  <div style="text-align: center; margin-bottom: 2.5rem;">
+    <span style="background: #fef3c7; color: #d97706; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 03 • Package Management</span>
+    <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Cargo vs npm / pnpm</h1>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Why Rust has no node_modules bloat, how Cargo handles duplicate dependencies, and feature flags.</p>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">Rosetta Stone: Commands Mapping</h2>
+    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
+      <thead>
+        <tr style="border-bottom: 2px solid #e2e8f0; color: #64748b;">
+          <th style="padding: 0.75rem 0.5rem;">Node.js / npm</th>
+          <th style="padding: 0.75rem 0.5rem;">Rust / Cargo</th>
+          <th style="padding: 0.75rem 0.5rem;">What it does</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem;"><code>npm init -y</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>cargo init</code> / <code>cargo new &lt;name&gt;</code></td>
+          <td style="padding: 0.75rem 0.5rem;">Initialize new project</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem;"><code>npm install &lt;pkg&gt;</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>cargo add &lt;crate&gt;</code></td>
+          <td style="padding: 0.75rem 0.5rem;">Add dependency to Cargo.toml</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem;"><code>npm run build</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>cargo build --release</code></td>
+          <td style="padding: 0.75rem 0.5rem;">Compile optimized binary</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem;"><code>npm test</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>cargo test</code></td>
+          <td style="padding: 0.75rem 0.5rem;">Run unit & integration tests</td>
+        </tr>
+        <tr>
+          <td style="padding: 0.75rem 0.5rem;"><code>npx eslint .</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>cargo clippy</code></td>
+          <td style="padding: 0.75rem 0.5rem;">Run strict static linter</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

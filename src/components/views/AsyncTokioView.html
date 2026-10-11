@@ -1,0 +1,37 @@
+<div class="appendix-container" style="max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
+  <div style="text-align: center; margin-bottom: 2.5rem;">
+    <span style="background: #e0f2fe; color: #0284c7; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 02 • Concurrency Deep Dive</span>
+    <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Node.js libuv vs Tokio Multi-Threaded Runtime</h1>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Understanding poll-based futures, work-stealing executors, and why async Rust achieves sub-millisecond p99 latencies.</p>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem;">
+      <h3 style="margin-top: 0; color: #16a34a; font-size: 1.2rem;">🟢 Node.js (libuv)</h3>
+      <ul style="padding-left: 1.25rem; color: #475569; line-height: 1.6;">
+        <li><strong>Single-threaded:</strong> Javascript executes on exactly one thread.</li>
+        <li><strong>Push-based:</strong> Callbacks pushed to microtask/macrotask queues.</li>
+        <li><strong>Event loop blocking:</strong> Heavy CPU computations freeze all incoming HTTP requests.</li>
+        <li><strong>Promises:</strong> Eager evaluation (starts executing immediately upon instantiation).</li>
+      </ul>
+    </div>
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem;">
+      <h3 style="margin-top: 0; color: #b7410e; font-size: 1.2rem;">🦀 Rust (Tokio)</h3>
+      <ul style="padding-left: 1.25rem; color: #475569; line-height: 1.6;">
+        <li><strong>Multi-threaded:</strong> Work-stealing scheduler across all physical CPU cores.</li>
+        <li><strong>Pull-based:</strong> Futures are polled only when awakened by <code>Waker</code>.</li>
+        <li><strong>CPU isolation:</strong> CPU tasks run cleanly on <code>tokio::task::spawn_blocking</code> or Rayon.</li>
+        <li><strong>Futures:</strong> Lazy evaluation (does nothing until polled with <code>.await</code>).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">The Cardinal Rule of Tokio</h2>
+    <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 1rem 1.25rem; border-radius: 4px; font-weight: 600; color: #991b1b; margin: 1rem 0;">
+      NEVER CALL SYNCHRONOUS BLOCKING CODE INSIDE AN ASYNC FUNCTION!<br>
+      <code>std::thread::sleep</code> or synchronous file I/O blocks the OS thread assigned to the Tokio worker, stalling hundreds of concurrent HTTP futures!
+    </div>
+    <p>Always use non-blocking equivalents: <code>tokio::time::sleep</code> and <code>tokio::fs</code>, or offload with <code>tokio::task::spawn_blocking</code>.</p>
+  </div>
+</div>

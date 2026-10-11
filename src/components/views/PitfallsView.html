@@ -1,0 +1,15 @@
+<div class="appendix-container" style="max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
+  <div style="text-align: center; margin-bottom: 2.5rem;">
+    <span style="background: #fee2e2; color: #b91c1c; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 11 • Footguns</span>
+    <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Top 8 Rust Footguns for Node Developers</h1>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Common misconceptions and pitfalls when transitioning from dynamic JavaScript to systems Rust.</p>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h3 style="margin-top: 0; color: #dc2626;">Footgun 1: Calling .clone() to appease the compiler</h3>
+    <p style="color: #475569; line-height: 1.6;">Calling <code>.clone()</code> duplicates heap memory allocations. If you clone a 50MB buffer on every incoming HTTP request, your performance will be worse than Node.js! Take borrowed references (<code>&T</code>) instead.</p>
+
+    <h3 style="color: #dc2626;">Footgun 2: Blocking the Tokio thread pool</h3>
+    <p style="color: #475569; line-height: 1.6;">Node.js developers used to single-threaded async sometimes use synchronous file reads or <code>std::thread::sleep</code> inside async blocks. In Tokio, this starves worker threads!</p>
+  </div>
+</div>

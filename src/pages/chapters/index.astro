@@ -1,0 +1,503 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Sidebar from '../../components/Sidebar.astro';
+import { chaptersData } from '../../data/chapters';
+
+// Group chapters by part
+const groupedChapters: Record<string, { key: string; num: string; title: string; desc: string }[]> = {};
+
+for (const [key, ch] of Object.entries(chaptersData)) {
+  if (!groupedChapters[ch.part]) {
+    groupedChapters[ch.part] = [];
+  }
+  groupedChapters[ch.part].push({
+    key,
+    num: ch.num,
+    title: ch.title,
+    desc: ch.desc
+  });
+}
+
+const architectureGuides = [
+  { href: '/testing', icon: '🧪', title: 'Unit & Integration Testing', desc: 'Table-driven tests, Testcontainers (Postgres/Redis), miniredis, and httptest.' },
+  { href: '/ai', icon: '🤖', title: 'Rust in the AI Era', desc: 'High-throughput LLM gateways, Ollama serving, Weaviate vector DBs, and SSE streaming.' },
+  { href: '/ai-agents', icon: '🦾', title: 'AI Agents & LangChainGo', desc: 'Autonomous ReAct agents, parallel tool calling with errgroup, and pure Rust MCP servers.' },
+  { href: '/go-vs-rust', icon: '🦀', title: 'Rust vs Rust Systems Guide', desc: '11-dimension comparison, memory models (GC vs Borrow Checker), and interactive decision engine.' },
+  { href: '/docker', icon: '🐳', title: 'Production Docker Containerization', desc: 'Multi-stage builds, Distroless and scratch images, and zero-CVE containers under 15MB.' },
+  { href: '/interviews', icon: '🎯', title: 'Senior Rust Interview Questions', desc: '20 senior backend questions on GMP scheduler, tricolor GC, escape analysis, and channel state.' },
+  { href: '/go-mod-vs-npm', icon: '📦', title: 'go.mod vs package.json', desc: 'Minimal Version Selection (MVS), Merkle tree go.sum, /v2 semantic imports, and flat vendoring.' },
+  { href: '/troubleshooting', icon: '🛠️', title: 'Compilation & Air Hot Reload', desc: '5-stage SSA compilation pipeline, compiler power flags, and sub-500ms Air live reloading.' },
+  { href: '/microservice', icon: '📂', title: 'Fullstack Microservice Architecture', desc: 'Express vs Rust Fiber, MongoDB connection singletons, and clean repository patterns.' },
+  { href: '/philosophy', icon: '🧠', title: 'Genesis, History & The Zen of Go', desc: 'Rob Pike and Ken Thompson 45-min build catalyst, Google-scale design, and Rust Proverbs.' },
+  { href: '/pitfalls', icon: '⚠️', title: 'Common Rust Pitfalls & Footguns', desc: 'Loop variable closures, nil interface traps, goroutine leaks, and slice mutations.' },
+  { href: '/leetcode', icon: '🧩', title: 'LeetCode in Rust (JS vs Go)', desc: 'Idiomatic Rust solutions for top LeetCode Easy problems with time/space complexity analysis.' },
+  { href: '/cheatsheet', icon: '📖', title: 'Rosetta Code Syntax Cheatsheet', desc: 'Comprehensive side-by-side syntax mapping from JavaScript/TypeScript to Go.' }
+];
+---
+
+<Layout 
+  title="Complete Curriculum & Chapters Directory | Go"
+  description="Explore all 60 interactive Rust lessons and 13 production architecture guides organized into structured chapters."
+>
+  <Header />
+
+  <!-- GitBook Book Reader Shell -->
+  <div id="viewStudio" class="studio-container gitbook-container">
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()" aria-hidden="true"></div>
+    <Sidebar />
+    <main id="main-content" class="curriculum-main-scroll gitbook-main-scroll" role="main" aria-label="Curriculum and Chapters Directory">
+      <div class="curriculum-container">
+      <!-- Hero Header -->
+    <section class="curriculum-hero" aria-labelledby="curriculum-heading">
+      <div style="display: flex; justify-content: center; gap: 0.6rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap;">
+        <span class="hero-badge" style="margin-bottom: 0;">📖 The Interactive Book</span>
+        <button id="chaptersMobileTocBtn" class="sidebar-expand-btn chapters-mobile-toc-btn" onclick="toggleSidebar()" aria-label="Toggle Table of Contents drawer" title="Toggle Table of Contents">☰ Table of Contents</button>
+      </div>
+      <h1 id="curriculum-heading" class="curriculum-title">Rust for Node.js Developers — All Chapters</h1>
+      <p class="curriculum-subtitle">
+        A hands-on, chapter-by-chapter programming book for JavaScript and TypeScript developers learning Go. Features 60 interactive chapters runnable directly in your browser, paired with 13 comprehensive production architecture guides.
+      </p>
+
+      <div class="curriculum-stats-bar">
+        <div class="stat-card">
+          <span class="stat-number">60</span>
+          <span class="stat-label">Coding Lessons</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number">13</span>
+          <span class="stat-label">Architecture Guides</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number">100%</span>
+          <span class="stat-label">Browser Runnable</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-number">0</span>
+          <span class="stat-label">Host Dependencies</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Chapters Grouped By Part -->
+    <section class="curriculum-section" aria-labelledby="lessons-heading">
+      <div class="section-header">
+        <h2 id="lessons-heading" class="section-title">
+          <span class="section-icon">📖</span> Book Table of Contents (60 Interactive Chapters)
+        </h2>
+        <span class="section-count">60 Chapters</span>
+      </div>
+
+      {Object.entries(groupedChapters).map(([partName, lessons]) => (
+        <div class="curriculum-part-group">
+          <div class="part-header-bar">
+            <h3 class="part-title">{partName}</h3>
+            <span class="part-count-badge">{lessons.length} Chapters</span>
+          </div>
+
+          <div class="lessons-grid">
+            {lessons.map(lesson => (
+              <a href={`/chapter/${lesson.key}`} class="lesson-link-card">
+                <div class="lesson-badge-row">
+                  <span class="lesson-num-pill">{lesson.num}</span>
+                  <span class="lesson-try-tag">🚀 Run Code</span>
+                </div>
+                <h4 class="lesson-card-title">{lesson.title}</h4>
+                <p class="lesson-card-desc">{lesson.desc}</p>
+              </a>
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
+
+    <!-- Architecture Guides & Appendices Section -->
+    <section class="curriculum-section" aria-labelledby="guides-heading">
+      <div class="section-header">
+        <h2 id="guides-heading" class="section-title">
+          <span class="section-icon">📑</span> Appendices & Production Architecture Guides
+        </h2>
+        <span class="section-count">13 Appendices</span>
+      </div>
+
+      <div class="guides-card-grid">
+        {architectureGuides.map(guide => (
+          <a href={guide.href} class="guide-nav-card">
+            <div class="guide-card-icon">{guide.icon}</div>
+            <div class="guide-card-content">
+              <h3 class="guide-card-title">{guide.title}</h3>
+              <p class="guide-card-desc">{guide.desc}</p>
+            </div>
+            <span class="guide-card-arrow" aria-hidden="true">→</span>
+          </a>
+        ))}
+      </div>
+    </section>
+    </div>
+  </main>
+  </div>
+
+  <script>
+    function toggleSidebar() {
+      const studio = document.getElementById('viewStudio');
+      if (studio) {
+        if (window.innerWidth <= 860) {
+          studio.classList.toggle('mobile-sidebar-open');
+        } else {
+          studio.classList.toggle('sidebar-collapsed');
+        }
+      }
+    }
+
+    function filterLessons(query) {
+      const q = query.toLowerCase().trim();
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+
+      let visibleCount = 0;
+      const items = document.querySelectorAll('.chapter-nav-item');
+      items.forEach(item => {
+        const text = item.innerText.toLowerCase();
+        const matches = text.includes(q);
+        item.style.display = matches ? 'flex' : 'none';
+        if (matches) visibleCount++;
+      });
+
+      document.querySelectorAll('.sidebar-part-label').forEach(label => {
+        let sibling = label.nextElementSibling;
+        let anyVisible = false;
+        while (sibling && sibling.classList.contains('chapter-nav-item')) {
+          if (sibling.style.display !== 'none') anyVisible = true;
+          sibling = sibling.nextElementSibling;
+        }
+        label.style.display = anyVisible ? 'block' : 'none';
+      });
+
+      const badge = document.getElementById('sidebarCountBadge');
+      if (badge) badge.innerText = q ? `${visibleCount} Found` : '56 Chapters';
+    }
+
+    function clearLessonSearch() {
+      const input = document.getElementById('lessonSearchInput');
+      if (input) {
+        input.value = '';
+        filterLessons('');
+        input.focus();
+      }
+    }
+
+    function selectChapter(key) {
+      window.location.href = '/chapter/' + key;
+    }
+
+    window.toggleSidebar = toggleSidebar;
+    window.filterLessons = filterLessons;
+    window.clearLessonSearch = clearLessonSearch;
+    window.selectChapter = selectChapter;
+  </script>
+</Layout>
+
+<style>
+  .curriculum-main-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: var(--bg);
+  }
+
+  .curriculum-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 5rem;
+    font-family: var(--font-ui, 'Plus Jakarta Sans', sans-serif);
+  }
+
+  .curriculum-hero {
+    text-align: center;
+    margin-bottom: 3.5rem;
+    padding: 3rem 1.5rem;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  }
+
+  .hero-badge {
+    display: inline-block;
+    padding: 0.35rem 0.85rem;
+    background: #e0f2fe;
+    color: #b7410e;
+    border: 1px solid #bae6fd;
+    border-radius: 2rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+  }
+
+  .curriculum-title {
+    font-size: 2.25rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.03em;
+    margin: 0 0 1rem;
+  }
+
+  .curriculum-subtitle {
+    font-size: 1.1rem;
+    line-height: 1.65;
+    color: #475569;
+    max-width: 750px;
+    margin: 0 auto 2rem;
+  }
+
+  .curriculum-stats-bar {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .stat-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    padding: 1rem 1.75rem;
+    border-radius: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .stat-number {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #b7410e;
+    font-family: var(--font-mono, monospace);
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .curriculum-section {
+    margin-bottom: 4rem;
+  }
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 0.75rem;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+  }
+
+  .section-count {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #b7410e;
+    background: #e0f2fe;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+  }
+
+  .guides-card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .guide-nav-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+  }
+
+  .guide-nav-card:hover {
+    border-color: #b7410e;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px -4px rgba(0, 173, 216, 0.15);
+  }
+
+  .guide-card-icon {
+    font-size: 1.75rem;
+    flex-shrink: 0;
+  }
+
+  .guide-card-content {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .guide-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 0.25rem;
+  }
+
+  .guide-card-desc {
+    font-size: 0.8125rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.45;
+  }
+
+  .guide-card-arrow {
+    color: #94a3b8;
+    font-weight: bold;
+    font-size: 1.1rem;
+    transition: transform 0.2s ease;
+  }
+
+  .guide-nav-card:hover .guide-card-arrow {
+    color: #b7410e;
+    transform: translateX(4px);
+  }
+
+  .curriculum-part-group {
+    margin-bottom: 2.5rem;
+  }
+
+  .part-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f1f5f9;
+    padding: 0.75rem 1.25rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    border-left: 4px solid #b7410e;
+  }
+
+  .part-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+  }
+
+  .part-count-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #475569;
+    background: #e2e8f0;
+    padding: 0.2rem 0.6rem;
+    border-radius: 1rem;
+  }
+
+  .lessons-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+
+  .lesson-link-card {
+    display: flex;
+    flex-direction: column;
+    padding: 1.125rem;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.625rem;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s ease;
+  }
+
+  .lesson-link-card:hover {
+    border-color: #b7410e;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 173, 216, 0.12);
+  }
+
+  .lesson-badge-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.625rem;
+  }
+
+  .lesson-num-pill {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #b7410e;
+    background: #e0f2fe;
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.25rem;
+    font-family: var(--font-mono, monospace);
+  }
+
+  .lesson-try-tag {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #059669;
+    background: #ecfdf5;
+    padding: 0.15rem 0.45rem;
+    border-radius: 0.25rem;
+  }
+
+  .lesson-card-title {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 0.5rem;
+    line-height: 1.35;
+  }
+
+  .lesson-card-desc {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .chapters-mobile-toc-btn {
+    display: none;
+  }
+
+  @media (max-width: 860px) {
+    .chapters-mobile-toc-btn {
+      display: inline-flex;
+      font-size: 0.8rem;
+      padding: 0.35rem 0.75rem;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .curriculum-title {
+      font-size: 1.75rem;
+    }
+    .guides-card-grid {
+      grid-template-columns: 1fr;
+    }
+    .lessons-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

@@ -1,0 +1,12 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Header from '../components/Header.astro';
+import ViewComponent from '../components/views/PhilosophyView.astro';
+---
+
+<Layout title="The Rust Philosophy | Rust for Node Devs" description="The fundamental philosophical principles of Rust explained for JavaScript and TypeScript engineers.">
+  <Header />
+  <main id="main-content" role="main" style="min-height: calc(100vh - 54px); overflow-y: auto;">
+    <ViewComponent />
+  </main>
+</Layout>

@@ -1,0 +1,67 @@
+out = """---
+// Sidebar Component
+import { chaptersData } from '../data/chapters';
+
+interface Props {
+  chapterKey?: string;
+  activeKey?: string;
+}
+const { chapterKey = 'basic_vars', activeKey = 'basic_vars' } = Astro.props;
+const currentKey = chapterKey || activeKey;
+
+const chaptersList = Object.entries(chaptersData);
+
+// Group chapters by part
+const groupedParts = chaptersList.reduce((acc, [key, ch]) => {
+  if (!acc[ch.part]) acc[ch.part] = [];
+  acc[ch.part].push({ key, ...ch });
+  return acc;
+}, {} as Record<string, any[]>);
+---
+<nav class="chapters-sidebar" id="chaptersList">
+  <div class="sidebar-header-box">
+    <div class="sidebar-title-row">
+      <div style="display: flex; align-items: center; gap: 0.4rem;">
+        <span class="sidebar-title">📖 Table of Contents</span>
+        <span class="sidebar-badge-count" id="sidebarCountBadge">56 Chapters</span>
+      </div>
+      <button id="sidebarCollapseBtn" class="sidebar-collapse-btn" onclick="toggleSidebar()" aria-label="Collapse Table of Contents sidebar" title="Collapse sidebar">◀</button>
+    </div>
+    <div class="sidebar-search-box" role="search">
+      <input type="search" id="lessonSearchInput" aria-label="Search lessons by title or keyword" placeholder="Filter 56 chapters... (⌘+K)" oninput="filterLessons(this.value)">
+      <button id="clearSearchBtn" aria-label="Clear lesson search query" class="clear-search-btn" onclick="clearLessonSearch()" style="display:none;">✕</button>
+    </div>
+  </div>
+
+  {Object.entries(groupedParts).map(([partName, items]) => (
+    <div>
+      <div class="sidebar-part-label">{partName}</div>
+      {items.map((item) => (
+        <div 
+          class={`chapter-nav-item ${currentKey === item.key ? 'active' : ''}`}
+          role="button" 
+          tabindex="0" 
+          aria-label={`Select lesson ${item.title}`} 
+          data-id={item.key} 
+          onclick={`selectChapter('${item.key}')`}
+        >
+          <span class="chapter-num">{item.num}</span>
+          <span>{item.title}</span>
+        </div>
+      ))}
+    </div>
+  ))}
+
+  <div class="sidebar-appendices-footer" style="padding: 1rem; border-top: 1px solid var(--border);">
+    <a href="/chapters" class="sidebar-appendices-link" style="color: #b7410e; font-weight: 700; text-decoration: none; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+      <span>📚 Book Index & Appendices (13)</span>
+      <span aria-hidden="true">→</span>
+    </a>
+  </div>
+</nav>
+"""
+
+with open("/Users/nadimtuhin/opensource/rust-for-node-devs/src/components/Sidebar.astro", "w") as f:
+    f.write(out)
+
+print("Generated clean dynamic Sidebar.astro!")

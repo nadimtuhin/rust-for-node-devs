@@ -1,0 +1,487 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Header from '../../components/Header.astro';
+import Sidebar from '../../components/Sidebar.astro';
+import LessonDetail from '../../components/LessonDetail.astro';
+import Playground from '../../components/Playground.astro';
+
+import { chaptersData } from '../../data/chapters';
+
+export function getStaticPaths() {
+  return Object.keys(chaptersData).map(key => ({
+    params: { id: key },
+    props: { chapterKey: key, chapter: chaptersData[key] }
+  }));
+}
+
+const { chapterKey, chapter } = Astro.props;
+
+// Keep title between 30 and 60 characters for optimal search CTR and SEO score
+const suffix = " — Rust for Node.js";
+let pageTitle = `${chapter.title}${suffix}`;
+if (pageTitle.length > 60) {
+  const maxT = 60 - suffix.length;
+  pageTitle = `${chapter.title.slice(0, maxT - 1)}…${suffix}`;
+}
+---
+
+<Layout 
+  title={pageTitle}
+  description={`Learn Rust ${chapter.title} with Node.js comparisons, live compiler playground, and idiomatic Rust mental models.`}
+  canonicalPath={`/chapter/${chapterKey}`}
+  breadcrumbs={[
+    { name: "Home", item: "https://rust-for-node-devs.vercel.app" },
+    { name: "Chapters", item: "https://rust-for-node-devs.vercel.app/chapters" },
+    { name: chapter.title, item: `https://rust-for-node-devs.vercel.app/chapter/${chapterKey}` }
+  ]}
+>
+  <Header />
+
+  <!-- GitBook Book Reader Layout -->
+  <div id="viewStudio" class="studio-container gitbook-container">
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()" aria-hidden="true"></div>
+    <Sidebar chapterKey={chapterKey} />
+    <main id="main-content" class="gitbook-main-scroll" role="main" aria-label="Chapter Reading and Interactive Playground">
+      <div class="gitbook-article-wrap">
+        <LessonDetail chapterKey={chapterKey} />
+        <Playground chapterKey={chapterKey} />
+        <div class="lesson-nav-footer gitbook-pager" role="navigation" aria-label="Chapter Step Navigation">
+          <button id="btnPrevLesson" class="gitbook-pager-card prev" onclick="navigateLesson(-1)" aria-label="Navigate to previous lesson">
+            <span class="pager-direction">← Previous</span>
+            <span class="pager-label">Previous Chapter</span>
+          </button>
+          <button id="btnNextLesson" class="gitbook-pager-card next" onclick="navigateLesson(1)" aria-label="Navigate to next lesson">
+            <span class="pager-direction">Next →</span>
+            <span class="pager-label">Next Chapter</span>
+          </button>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Client-side Interactive Engine -->
+  <script is:inline src="/chapters-data.js"></script>
+  <script is:inline src="/chapter-insights.js"></script>
+  <script define:vars={{ initialKey: chapterKey }}>
+    var chaptersData = window.chaptersData || {};
+    var chapterInsights = window.chapterInsights || {};
+
+    let activeKey = initialKey || 'basic_vars';
+    let editor = null;
+
+    function initEditor() {
+      if (!editor && window.CodeMirror && document.getElementById('codeArea')) {
+        editor = CodeMirror.fromTextArea(document.getElementById('codeArea'), {
+          lineNumbers: true,
+          mode: 'go',
+          theme: 'eclipse',
+          tabSize: 4,
+          indentUnit: 4,
+          lineWrapping: true,
+          viewportMargin: Infinity
+        });
+      }
+    }
+
+    // Search & Filter Lessons
+    function filterLessons(query) {
+      const q = query.toLowerCase().trim();
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+
+      let visibleCount = 0;
+      const items = document.querySelectorAll('.chapter-nav-item');
+      items.forEach(item => {
+        const text = item.innerText.toLowerCase();
+        const matches = text.includes(q);
+        item.style.display = matches ? 'flex' : 'none';
+        if (matches) visibleCount++;
+      });
+
+      document.querySelectorAll('.sidebar-part-label').forEach(label => {
+        let sibling = label.nextElementSibling;
+        let anyVisible = false;
+        while (sibling && sibling.classList.contains('chapter-nav-item')) {
+          if (sibling.style.display !== 'none') anyVisible = true;
+          sibling = sibling.nextElementSibling;
+        }
+        label.style.display = anyVisible ? 'block' : 'none';
+      });
+
+      const badge = document.getElementById('sidebarCountBadge');
+      if (badge) badge.innerText = q ? `${visibleCount} Found` : '60 Lessons';
+    }
+
+    function clearLessonSearch() {
+      const input = document.getElementById('lessonSearchInput');
+      if (input) {
+        input.value = '';
+        filterLessons('');
+        input.focus();
+      }
+    }
+
+    function scrollToTop() {
+      const mainContent = document.getElementById('main-content');
+      if (mainContent) {
+        mainContent.scrollTop = 0;
+        if (typeof mainContent.scrollTo === 'function') {
+          mainContent.scrollTo(0, 0);
+        }
+      }
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }
+
+    function updateNavButtons(key) {
+      const keys = Object.keys(chaptersData);
+      const currIdx = keys.indexOf(key);
+      const hasPrev = currIdx > 0;
+      const hasNext = currIdx !== -1 && currIdx < keys.length - 1;
+
+      // Top navigation buttons
+      const topPrev = document.getElementById('btnTopPrevLesson');
+      if (topPrev) {
+        topPrev.disabled = !hasPrev;
+        topPrev.classList.toggle('disabled', !hasPrev);
+        if (hasPrev) {
+          topPrev.setAttribute('title', `Previous: ${chaptersData[keys[currIdx - 1]].title}`);
+        } else {
+          topPrev.removeAttribute('title');
+        }
+      }
+
+      const topNext = document.getElementById('btnTopNextLesson');
+      if (topNext) {
+        topNext.disabled = !hasNext;
+        topNext.classList.toggle('disabled', !hasNext);
+        if (hasNext) {
+          topNext.setAttribute('title', `Next: ${chaptersData[keys[currIdx + 1]].title}`);
+        } else {
+          topNext.removeAttribute('title');
+        }
+      }
+
+      // Bottom navigation buttons
+      const prevBtn = document.getElementById('btnPrevLesson');
+      if (prevBtn) {
+        prevBtn.disabled = !hasPrev;
+        prevBtn.classList.toggle('disabled', !hasPrev);
+        const prevLabel = prevBtn.querySelector('.pager-label');
+        if (prevLabel) {
+          prevLabel.textContent = hasPrev ? chaptersData[keys[currIdx - 1]].title : 'Previous Chapter';
+        }
+      }
+
+      const nextBtn = document.getElementById('btnNextLesson');
+      if (nextBtn) {
+        nextBtn.disabled = !hasNext;
+        nextBtn.classList.toggle('disabled', !hasNext);
+        const nextLabel = nextBtn.querySelector('.pager-label');
+        if (nextLabel) {
+          nextLabel.textContent = hasNext ? chaptersData[keys[currIdx + 1]].title : 'Next Chapter';
+        }
+      }
+    }
+
+    // Previous / Next Lesson Navigation
+    function navigateLesson(direction) {
+      const keys = Object.keys(chaptersData);
+      const currentIndex = keys.indexOf(activeKey);
+      if (currentIndex === -1) return;
+
+      const nextIndex = currentIndex + direction;
+      if (nextIndex >= 0 && nextIndex < keys.length) {
+        selectChapter(keys[nextIndex]);
+        scrollToTop();
+      }
+    }
+
+    function highlightJS(code) {
+      if (!code) return '';
+      const tokenRegex = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|(`(?:\\.|[^`])*`|"(?:\\.|[^"\\])*"|\x27(?:\\.|[^\x27\\])*\x27)|(\b(?:const|let|var|function|return|if|else|switch|case|break|for|while|class|constructor|this|import|export|from|require|async|await|try|catch|throw|new|typeof|interface|type|extends|implements|yield|default|super)\b)|(\b(?:true|false|null|undefined|NaN|Promise|Map|Set|Buffer|Array|Object|JSON|console|process|Error|Math)\b)|(\b\d+(?:\.\d+)?\b)|(\b[a-zA-Z_$][a-zA-Z0-9_$]*(?=\s*\())|([&<>])/g;
+      return code.replace(tokenRegex, (match, comment, str, kw, builtin, num, fn, escapeChar) => {
+        if (escapeChar) {
+          if (escapeChar === '&') return '&amp;';
+          if (escapeChar === '<') return '&lt;';
+          if (escapeChar === '>') return '&gt;';
+        }
+        if (comment) {
+          const escaped = comment.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="tok-comment">${escaped}</span>`;
+        }
+        if (str) {
+          const escaped = str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          return `<span class="tok-string">${escaped}</span>`;
+        }
+        if (kw) return `<span class="tok-keyword">${kw}</span>`;
+        if (builtin) return `<span class="tok-builtin">${builtin}</span>`;
+        if (num) return `<span class="tok-number">${num}</span>`;
+        if (fn) return `<span class="tok-func">${fn}</span>`;
+        return match;
+      });
+    }
+
+    function copyNodeSnippet() {
+      const code = (chaptersData[activeKey] && chaptersData[activeKey].nodeCode) || document.getElementById('detailNodeCode').innerText;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).catch(() => {});
+      }
+      updateStatus('Copied Node Snippet', 'ready');
+      setTimeout(() => updateStatus('Ready', 'ready'), 2000);
+    }
+
+    function copyEditorCode() {
+      const code = editor ? editor.getValue() : (chaptersData[activeKey] ? chaptersData[activeKey].code : '');
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(code).catch(() => {});
+      }
+      updateStatus('Copied Rust Code', 'ready');
+      setTimeout(() => updateStatus('Ready', 'ready'), 2000);
+    }
+
+    function resetEditorCode() {
+      if (editor && chaptersData[activeKey]) {
+        editor.setValue(chaptersData[activeKey].code);
+        updateStatus('Code Reset', 'ready');
+        setTimeout(() => updateStatus('Ready', 'ready'), 1500);
+      }
+    }
+
+    function clearConsole() {
+      document.getElementById('consoleArea').innerText = '';
+      updateStatus('Console Cleared', 'ready');
+      setTimeout(() => updateStatus('Ready', 'ready'), 1500);
+    }
+
+    function copyConsoleOutput() {
+      const out = document.getElementById('consoleArea').innerText;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(out).catch(() => {});
+      }
+      updateStatus('Copied Output', 'ready');
+      setTimeout(() => updateStatus('Ready', 'ready'), 2000);
+    }
+
+    // Keyboard Shortcuts: Cmd+Enter / Ctrl+Enter to execute Rust code
+    document.addEventListener('keydown', function(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        executeRustCode();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.getElementById('lessonSearchInput');
+        if (searchInput) searchInput.focus();
+      }
+    });
+
+    function selectChapter(key) {
+      if (!chaptersData[key]) return;
+      activeKey = key;
+      const data = chaptersData[key];
+
+      document.querySelectorAll('.chapter-nav-item').forEach(item => {
+        item.classList.toggle('active', item.getAttribute('data-id') === key);
+      });
+
+      document.getElementById('detailPartTag').innerText = data.part;
+      document.getElementById('detailId').innerText = '#' + data.num;
+      document.getElementById('detailTitle').innerText = data.title;
+      document.getElementById('detailDesc').innerText = data.desc;
+
+      const nodeEl = document.getElementById('detailNodeCode');
+      if (nodeEl) {
+        nodeEl.innerHTML = `<code>${highlightJS(data.nodeCode)}</code>`;
+      }
+
+      document.getElementById('detailGoWhy').innerText = data.why;
+
+      const insightData = chapterInsights[key];
+      if (insightData) {
+        const insightRust = document.getElementById('detailInsightGo');
+        if (insightGo) insightGo.innerText = insightData.goParadigm;
+        const insightNode = document.getElementById('detailInsightNode');
+        if (insightNode) insightNode.innerText = insightData.nodeEquivalent;
+        const insightTakeaway = document.getElementById('detailInsightTakeaway');
+        if (insightTakeaway) insightTakeaway.innerText = insightData.coreTakeaway;
+      }
+
+      document.getElementById('editorCurrentFile').innerText = `📄 main.rs — ${data.title}`;
+      if (editor) {
+        editor.setValue(data.code);
+      }
+
+      updateStatus('Ready', 'ready');
+      const c = document.getElementById('consoleArea');
+      c.className = 'console-body';
+      c.textContent = '// Hit "Run Code" (or ⌘+Enter) to compile and execute on Rust Playground!';
+      
+      updateNavButtons(key);
+      scrollToTop();
+      closeMobileSidebar();
+
+      // Update browser URL to clean /chapter/key path
+      if (history.replaceState) {
+        const newurl = '/chapter/' + key;
+        window.history.replaceState({ path: newurl }, '', newurl);
+      }
+    }
+
+    function updateStatus(text, type) {
+      const statusTag = document.getElementById('statusTag');
+      const statusDot = document.getElementById('statusDot');
+      if (statusTag) {
+        statusTag.innerText = text;
+        statusTag.className = 'status-pill ' + (type || 'ready');
+      }
+      if (statusDot) {
+        statusDot.className = 'status-dot ' + (type === 'error' ? 'error' : (type === 'running' ? 'compiling' : ''));
+      }
+    }
+
+    async function executeRustCode() {
+      const code = editor ? editor.getValue() : (chaptersData[activeKey] ? chaptersData[activeKey].code : '');
+      const consoleArea = document.getElementById('consoleArea');
+      const runBtn = document.getElementById('runBtn');
+      const statusDot = document.getElementById('statusDot');
+      const statusTag = document.getElementById('statusTag');
+      const statusLatency = document.getElementById('statusLatency');
+
+      if (runBtn) runBtn.disabled = true;
+      if (statusDot) statusDot.className = 'status-dot compiling';
+      if (statusTag) {
+        statusTag.className = 'status-pill running';
+        statusTag.innerText = 'Compiling...';
+      }
+      if (statusLatency) statusLatency.innerText = '';
+
+      consoleArea.className = 'console-body';
+      consoleArea.textContent = '⏳ Compiling and executing on Rust Playground...';
+
+      const startTime = performance.now();
+
+      try {
+        const params = new URLSearchParams();
+        params.append('version', '2');
+        params.append('body', code);
+
+        const response = await fetch('https://play.rust-lang.org/execute', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: params.toString()
+        });
+
+        const elapsed = Math.round(performance.now() - startTime);
+        if (statusLatency) statusLatency.innerText = `${elapsed}ms`;
+
+        if (!response.ok) {
+          throw new Error(`Compiler returned HTTP ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.Errors) {
+          consoleArea.className = 'console-body is-error';
+          consoleArea.textContent = '❌ Compile Error:\n\n' + data.Errors;
+          if (statusDot) statusDot.className = 'status-dot error';
+          if (statusTag) {
+            statusTag.className = 'status-pill error';
+            statusTag.innerText = 'Error';
+          }
+        } else {
+          let outputText = '';
+          if (data.Events && data.Events.length > 0) {
+            outputText = data.Events.map(e => e.Message).join('');
+          } else {
+            outputText = '✓ Program completed with code 0 (no stdout output).';
+          }
+          consoleArea.className = 'console-body';
+          consoleArea.textContent = outputText;
+          if (statusDot) statusDot.className = 'status-dot';
+          if (statusTag) {
+            statusTag.className = 'status-pill ready';
+            statusTag.innerText = `Exit 0 • ${elapsed}ms`;
+          }
+        }
+      } catch (err) {
+        const elapsed = Math.round(performance.now() - startTime);
+        if (statusLatency) statusLatency.innerText = `${elapsed}ms`;
+        consoleArea.className = 'console-body is-error';
+        consoleArea.textContent = '⚠️ Request Failed:\n' + err.message;
+        if (statusDot) statusDot.className = 'status-dot error';
+        if (statusTag) {
+          statusTag.className = 'status-pill error';
+          statusTag.innerText = 'Failed';
+        }
+      } finally {
+        if (runBtn) runBtn.disabled = false;
+      }
+    }
+
+    function toggleSidebar() {
+      const container = document.getElementById('viewStudio');
+      if (container) {
+        if (window.innerWidth <= 860) {
+          container.classList.toggle('mobile-sidebar-open');
+        } else {
+          container.classList.toggle('sidebar-collapsed');
+          const isCollapsed = container.classList.contains('sidebar-collapsed');
+          try {
+            localStorage.setItem('go_book_sidebar_collapsed', isCollapsed ? '1' : '0');
+          } catch (e) {}
+        }
+      }
+    }
+
+    function closeMobileSidebar() {
+      const container = document.getElementById('viewStudio');
+      if (container && container.classList.contains('mobile-sidebar-open')) {
+        container.classList.remove('mobile-sidebar-open');
+      }
+    }
+
+    function initStudio() {
+      initEditor();
+      try {
+        const savedCollapse = localStorage.getItem('go_book_sidebar_collapsed');
+        const container = document.getElementById('viewStudio');
+        if (savedCollapse === '1' && container) {
+          container.classList.add('sidebar-collapsed');
+        }
+      } catch (e) {}
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryChapter = urlParams.get('chapter');
+      const targetChapter = queryChapter || initialKey || 'basic_vars';
+      if (chaptersData[targetChapter]) {
+        selectChapter(targetChapter);
+      } else {
+        selectChapter('basic_vars');
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initStudio);
+    } else {
+      initStudio();
+    }
+
+    // Make functions available on window
+    window.toggleSidebar = toggleSidebar;
+    window.closeMobileSidebar = closeMobileSidebar;
+    window.selectChapter = selectChapter;
+    window.filterLessons = filterLessons;
+    window.clearLessonSearch = clearLessonSearch;
+    window.navigateLesson = navigateLesson;
+    window.copyNodeSnippet = copyNodeSnippet;
+    window.copyEditorCode = copyEditorCode;
+    window.resetEditorCode = resetEditorCode;
+    window.clearConsole = clearConsole;
+    window.copyConsoleOutput = copyConsoleOutput;
+    window.executeRustCode = executeRustCode;
+  </script>
+</Layout>

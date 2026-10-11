@@ -1,13 +1,15 @@
 <div class="appendix-container" style="max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #e0f2fe; color: #0284c7; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 05 • Containerization</span>
-    <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Production Multi-Stage Dockerfile</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Build static binaries with cargo-chef caching and Google Distroless for minimal attack surfaces.</p>
+    <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Production Multi-Stage Dockerfile & Binary Optimization</h1>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Build static binaries with cargo-chef caching, symbol stripping, MUSL cross-compilation, and distroless/scratch runtime containers.</p>
   </div>
 
-  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">The Gold-Standard Dockerfile</h2>
-    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Stage 1: Dependency Chef Recipe
+  <!-- Section 1: Standard Glibc Multi-Stage Dockerfile -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">1. The Gold-Standard Multi-Stage Dockerfile (with Stripping)</h2>
+    <p>Using <code>cargo-chef</code> for layer caching and explicitly stripping unneeded debug symbols in the builder stage before packaging into Google Distroless:</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Stage 1: Dependency Chef Base
 FROM rust:1.84-bookworm AS chef
 RUN cargo install cargo-chef
 WORKDIR /app
@@ -17,19 +19,69 @@ FROM chef AS planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
-# Stage 3: Build cached dependencies
+# Stage 3: Build & strip binary
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release --bin server
+# Explicit symbol stripping (cuts binary size by 40-70%)
+RUN strip /app/target/release/server
 
-# Stage 4: Ultra-minimal production runtime (< 15MB)
+# Stage 4: Ultra-minimal production runtime (< 20MB)
 FROM gcr.io/distroless/cc-debian12:nonroot
 WORKDIR /app
 COPY --from=builder /app/target/release/server /app/server
 USER nonroot:nonroot
 EXPOSE 3000
 ENTRYPOINT ["/app/server"]</code></pre>
+  </div>
+
+  <!-- Section 2: Release Profile Strip in Cargo.toml -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">2. Declarative Stripping in <code>Cargo.toml</code></h2>
+    <p>Instead of invoking the external <code>strip</code> utility in Docker, you can instruct <code>rustc</code> and LLVM to strip symbols and enable link-time optimization directly via <code>[profile.release]</code>:</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Cargo.toml
+[profile.release]
+opt-level = 3          # Max performance (use "z" or "s" if optimizing strictly for size)
+lto = true             # Enable full Link-Time Optimization across crates
+codegen-units = 1      # Maximize LTO optimization scope at the cost of compile time
+strip = true           # Automatically strip symbols and debuginfo from the output binary
+panic = "abort"        # Drops unwinding tables, significantly shrinking binary overhead</code></pre>
+  </div>
+
+  <!-- Section 3: MUSL & Scratch Containers -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">3. Zero-Dependency Containers with MUSL (<code>FROM scratch</code>)</h2>
+    <p>Standard builds dynamically link to GNU libc (<code>glibc</code>). By cross-compiling against <strong>MUSL libc</strong>, you generate a 100% statically linked executable that can run in a completely empty <code>scratch</code> container with zero OS dependencies.</p>
+
+    <h3 style="font-size: 1.1rem; font-weight: 600; color: #334155; margin-top: 1rem;">Common Target Triplets:</h3>
+    <ul style="color: #475569; padding-left: 1.25rem; line-height: 1.6;">
+      <li><code>x86_64-unknown-linux-musl</code> — 64-bit Linux (Intel/AMD)</li>
+      <li><code>aarch64-unknown-linux-musl</code> — 64-bit Linux (ARM64 / AWS Graviton / Apple Silicon Docker)</li>
+    </ul>
+
+    <p style="margin-top: 1rem;">MUSL multi-stage Dockerfile:</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Build statically linked binary with musl target
+FROM rust:1.84-alpine AS builder
+RUN apk add --no-cache musl-dev
+WORKDIR /app
+
+# Add the appropriate MUSL target triplet
+RUN rustup target add x86_64-unknown-linux-musl
+
+COPY Cargo.toml Cargo.lock ./
+COPY src ./src
+RUN cargo build --release --target x86_64-unknown-linux-musl --bin server
+
+# Deploy into a true zero-overhead image (< 10MB)
+FROM scratch
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/server /server
+EXPOSE 3000
+ENTRYPOINT ["/server"]</code></pre>
+
+    <div style="margin-top: 1rem; padding: 0.85rem 1rem; background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 4px; font-size: 0.95rem; color: #1e40af;">
+      <strong>Note on OpenSSL & TLS:</strong> If your binary makes HTTPS requests, pure static MUSL builds require bundled certificates or pure-Rust TLS implementations (use <code>rustls</code> instead of <code>native-tls</code> / <code>openssl</code>).
+    </div>
   </div>
 </div>

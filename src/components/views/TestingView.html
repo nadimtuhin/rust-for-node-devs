@@ -2,11 +2,13 @@
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #dcfce7; color: #15803d; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 06 • Quality & Testing</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Testing & Mocking: Jest / Vitest vs Rust</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Unit tests, integration tests, async tests with tokio::test, and trait mocking with mockall.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Unit tests, external integration tests, serial database testing, and trait mocking with mockall.</p>
   </div>
 
+  <!-- Section 1: Unit Tests -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">1. Built-in Synchronous & Async Tests</h2>
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">1. Built-in Synchronous & Async Unit Tests</h2>
+    <p>Unit tests live right inside your source files in a <code>#[cfg(test)]</code> module. They can access private functions and run concurrently by default.</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>#[cfg(test)]
 mod tests {
     use super::*;
@@ -24,12 +26,65 @@ mod tests {
 }</code></pre>
   </div>
 
+  <!-- Section 2: External Integration Tests -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">2. External Integration Tests & Directory Convention</h2>
+    <p>In Node.js, test runners search for <code>*.test.ts</code> anywhere. In Rust, Cargo compiles each file directly under <code>tests/</code> as an <strong>independent external crate</strong>. To share fixtures without Cargo treating them as standalone tests, use the <code>tests/common/mod.rs</code> convention:</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>my_project/
+├── Cargo.toml
+├── src/
+│   ├── lib.rs
+│   └── main.rs
+└── tests/
+    ├── common/
+    │   └── mod.rs          # Shared fixture module (NOT compiled as a test binary)
+    └── integration_test.rs # Root test crate (tests only public APIs)</code></pre>
+
+    <p style="margin-top: 1rem;">Shared helper in <code>tests/common/mod.rs</code>:</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>// tests/common/mod.rs
+pub fn setup_test_db() -> String {
+    // Spin up test db or create temporary schema
+    "postgres://localhost:5432/test_db".to_string()
+}</code></pre>
+
+    <p style="margin-top: 1rem;">Integration test in <code>tests/integration_test.rs</code>:</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>// tests/integration_test.rs
+use my_project::app; // Imported as an external crate
+mod common;
+
+#[tokio::test]
+async fn test_create_user_flow() {
+    let db_url = common::setup_test_db();
+    let response = app::run_migration(&db_url).await;
+    assert!(response.is_ok());
+}</code></pre>
+  </div>
+
+  <!-- Section 3: Serial Execution for DB Tests -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">3. Isolated Database Tests: <code>--test-threads=1</code></h2>
+    <p>Rust's built-in test harness runs all tests across multiple threads simultaneously. When testing stateful database transactions or truncating tables, concurrent tests will clash and cause flaky failures.</p>
+    <p>To run tests serially in a single thread:</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Pass --test-threads to the test binary via Cargo
+cargo test -- --test-threads=1
+
+# Or run only integration tests serially:
+cargo test --test integration_test -- --test-threads=1
+
+# Alternatively, set the environment variable:
+RUST_TEST_THREADS=1 cargo test</code></pre>
+    <div style="margin-top: 1rem; padding: 0.85rem 1rem; background: #fef2f2; border-left: 4px solid #ef4444; border-radius: 4px; font-size: 0.95rem; color: #991b1b;">
+      <strong>Node.js Comparison:</strong> In Jest, this is the equivalent of running with <code>jest --runInBand</code>. In Rust, you can also use crates like <code>serial_test</code> (<code>#[serial]</code> attribute) to only force DB tests into serial execution while keeping pure unit tests parallel.
+    </div>
+  </div>
+
+  <!-- Section 4: Mocking Traits with mockall -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">2. Mocking Traits with mockall</h2>
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">4. Mocking Traits with mockall</h2>
     <p>JavaScript allows runtime monkey-patching (<code>jest.mock('./api')</code>). In Rust, dependencies are abstracted behind traits and mocked at compile time using <code>mockall</code>:</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>#[mockall::automock]
 pub trait UserRepository {
-    fn get_user(&amp;self, id: u32) -> Result&lt;String, &amp;'static str&gt;;
+    fn get_user(&self, id: u32) -> Result&lt;String, &'static str&gt;;
 }
 
 #[test]

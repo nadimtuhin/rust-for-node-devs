@@ -47,11 +47,17 @@ MIRIFLAGS="-Zmiri-tree-borrows -Zmiri-strict-provenance" cargo miri test</code><
     <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code>// 1. Cargo.toml dependency:
 // console-subscriber = "0.4"
 
-// 2. In src/main.rs before initializing Tokio runtime:
-#[tokio::main]
-async fn main() {
-    console_subscriber::init();
-    // ... rest of service
+// 2. In src/main.rs: MUST initialize BEFORE constructing the Tokio runtime:
+fn main() -> Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    console_subscriber::init(); // Initialize subscriber first
+
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?
+        .block_on(async {
+            // ... rest of async service
+            Ok(())
+        })
 }</code></pre>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem; margin-top: 0.75rem;"><code># 3. Compile service with Tokio unstable flags enabled:
 RUSTFLAGS="--cfg tokio_unstable" cargo run
@@ -74,8 +80,14 @@ fn main() {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
     // application logic...
-    // Writes `dhat-heap.json` upon graceful exit
+    // Automatically writes `dhat-heap.json` upon process exit
 }</code></pre>
+    <p style="font-weight: 600; font-size: 0.9rem; margin: 1rem 0 0.25rem;">DHAT Profiling execution & inspection:</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code># Run binary with dhat-heap feature and debug symbols:
+cargo run --release --features dhat-heap
+
+# Visualize results in the interactive DHAT web viewer:
+# Open https://nnethercote.github.io/dh_view/dh_view.html and load `dhat-heap.json`</code></pre>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem; margin-top: 0.75rem;"><code># Linux Valgrind Massif (Heap Profiling):
 valgrind --tool=massif --pages-as-heap=yes target/release/my-service
 ms_print massif.out.&lt;pid&gt;</code></pre>

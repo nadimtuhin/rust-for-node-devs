@@ -867,27 +867,41 @@ add_chapter(
     "If you require an ORM rather than raw SQLx, SeaORM provides an async ActiveModel pattern built on top of SQLx with migrations, relation mapping, and typed schema builders.",
     "// TypeORM Entity\n@Entity()\nclass User { @PrimaryGeneratedColumn() id: number; }",
     "Type-safe relation joins with compile-time generated queries without dynamic reflection.",
-    """// Conceptual Model & ActiveModel pattern in Rust
+    """// SeaORM ActiveModel pattern with ActiveValue (Set vs Unchanged)
 #[derive(Debug, Clone)]
+enum ActiveValue<T> {
+    Set(T),
+    Unchanged(T),
+    NotSet,
+}
+
+#[derive(Debug)]
 struct UserModel {
     id: i32,
     username: String,
 }
 
 struct UserActiveModel {
-    username: Option<String>,
+    username: ActiveValue<String>,
 }
 
 impl UserActiveModel {
     fn insert(self, id: i32) -> UserModel {
-        UserModel { id, username: self.username.unwrap_or_default() }
+        let name = match self.username {
+            ActiveValue::Set(val) => val,
+            ActiveValue::Unchanged(val) => val,
+            ActiveValue::NotSet => String::from("anonymous"),
+        };
+        UserModel { id, username: name }
     }
 }
 
 fn main() {
-    let new_user = UserActiveModel { username: Some("rustacean".into()) };
-    let saved = new_user.insert(1);
-    println!("Saved entity: {:?}", saved);
+    let new_user = UserActiveModel {
+        username: ActiveValue::Set("rustacean_hero".to_string()),
+    };
+    let saved = new_user.insert(101);
+    println!("Saved SeaORM ActiveModel entity: {:?}", saved);
 }""",
     {
         "proTip": "Use `sea-orm-cli generate entity` to generate models directly from your database schema.",
@@ -1263,20 +1277,28 @@ add_chapter(
     "Node.js uses node-gyp or ffi-napi. Rust natively supports C ABI calls using `extern \"C\"`, allowing seamless integration with system libraries like libssl, SQLite, or hardware SDKs.",
     "// Node.js ffi-napi\nconst ffi = require('ffi-napi');\nconst lib = ffi.Library('libc', { 'puts': ['int', ['string']] });",
     "Rust links directly to C static and dynamic libraries with zero wrapper performance penalty.",
-    """// Simulating C-compatible data structure with #[repr(C)]
+    """use std::ffi::CString;
+use std::os::raw::c_char;
+
+// Direct C ABI foreign function declaration
+extern "C" {
+    fn puts(s: *const c_char) -> i32;
+}
+
 #[repr(C)]
 struct Point {
     x: f64,
     y: f64,
 }
 
-fn calculate_distance(p: &Point) -> f64 {
-    (p.x * p.x + p.y * p.y).sqrt()
-}
-
 fn main() {
     let pt = Point { x: 3.0, y: 4.0 };
-    println!("Point distance from origin: {}", calculate_distance(&pt));
+    println!("Point coordinate struct [repr(C)]: ({}, {})", pt.x, pt.y);
+
+    let msg = CString::new("--> Executed foreign C ABI libc::puts directly from Rust!").unwrap();
+    unsafe {
+        puts(msg.as_ptr());
+    }
 }""",
     {
         "proTip": "Use `bindgen` to automatically generate Rust FFI bindings from C header (.h) files.",
@@ -1622,28 +1644,31 @@ struct ListNode {
     next: Option<Box<ListNode>>,
 }
 
-fn merge_two_vectors(v1: Vec<i32>, v2: Vec<i32>) -> Vec<i32> {
-    let mut merged = Vec::with_capacity(v1.len() + v2.len());
-    let (mut i, mut j) = (0, 0);
+fn merge_two_lists(mut l1: Option<Box<ListNode>>, mut l2: Option<Box<ListNode>>) -> Option<Box<ListNode>> {
+    let mut dummy = ListNode { val: 0, next: None };
+    let mut tail = &mut dummy.next;
 
-    while i < v1.len() && j < v2.len() {
-        if v1[i] <= v2[j] {
-            merged.push(v1[i]);
-            i += 1;
+    while l1.is_some() && l2.is_some() {
+        if l1.as_ref().unwrap().val <= l2.as_ref().unwrap().val {
+            let next = l1.as_mut().unwrap().next.take();
+            *tail = l1;
+            l1 = next;
         } else {
-            merged.push(v2[j]);
-            j += 1;
+            let next = l2.as_mut().unwrap().next.take();
+            *tail = l2;
+            l2 = next;
         }
+        tail = &mut tail.as_mut().unwrap().next;
     }
-    merged.extend_from_slice(&v1[i..]);
-    merged.extend_from_slice(&v2[j..]);
-    merged
+    *tail = l1.or(l2);
+    dummy.next
 }
 
 fn main() {
-    let l1 = vec![1, 2, 4];
-    let l2 = vec![1, 3, 4];
-    println!("Merged sorted list: {:?}", merge_two_vectors(l1, l2));
+    let l1 = Some(Box::new(ListNode { val: 1, next: Some(Box::new(ListNode { val: 4, next: None })) }));
+    let l2 = Some(Box::new(ListNode { val: 2, next: Some(Box::new(ListNode { val: 3, next: None })) }));
+    let merged = merge_two_lists(l1, l2);
+    println!("Merged ListNode linked lists: {:?}", merged);
 }""",
     {
         "proTip": "Use `extend_from_slice` to append remaining elements in one fast memory copy operation.",

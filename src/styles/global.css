@@ -3,10 +3,13 @@
    ========================================================================== */
 :root {
   /* OFFICIAL GOLANG BRAND PALETTE */
-  --go-blue: #00add8;             /* Official Go Blue (Primary Brand Cyan/Blue) */
-  --go-dark-cyan: #007d9c;        /* Go Dark Cyan (WCAG AA compliant text on white: 4.8:1) */
-  --go-dark-cyan-hover: #00627a;  /* AAA contrast hover cyan (6.5:1) */
-  --go-cyan-light: #e0f2fe;       /* Soft cyan tinted background */
+  --rust-primary: #b7410e;
+  --rust-hover: #c2410c;
+  --rust-light: #ffedd5;
+  --go-blue: #b7410e;             /* Official Go Blue (Primary Brand Cyan/Blue) */
+  --go-dark-cyan: #9a3412;        /* Go Dark Cyan (WCAG AA compliant text on white: 4.8:1) */
+  --go-dark-cyan-hover: #7c2d12;  /* AAA contrast hover cyan (6.5:1) */
+  --go-cyan-light: #ffedd5;       /* Soft cyan tinted background */
   --go-gopher-turquoise: #29beb0; /* Go Gopher turquoise accent */
   --go-navy: #0b2545;             /* Go Accent Navy (deep brand contrast) */
   --go-dark: #0f172a;             /* Slate-900 developer dark aesthetics */
@@ -37,7 +40,7 @@
   --text-muted: #475569;          /* Secondary/muted text (4.7:1 on white, WCAG AA compliant) */
 
   /* KEYBOARD ACCESSIBILITY & FOCUS STATES */
-  --focus-ring: #00add8;          /* High-visibility official Go Blue outline */
+  --focus-ring: #b7410e;          /* High-visibility official Go Blue outline */
   --focus-ring-offset: 2px;
 
   /* CODE & TERMINAL AESTHETICS */
@@ -434,7 +437,8 @@ header {
 /* ==========================================================================
    GITBOOK-STYLE BOOK READER LAYOUT
    ========================================================================== */
-.studio-container {
+.studio-container,
+.studio-main-3col {
   display: flex;
   flex: 1;
   height: calc(100vh - 54px);
@@ -1171,7 +1175,7 @@ header {
 }
 
 .btn-run {
-  background: linear-gradient(135deg, #007d9c 0%, #0098be 50%, #00add8 100%);
+  background: linear-gradient(135deg, #9a3412 0%, #b7410e 50%, #ea580c 100%);
   color: #ffffff;
   border: 1px solid #007d9c;
   padding: 0.35rem 0.95rem;
@@ -1921,7 +1925,9 @@ main#main-content:not(.playground-column) {
     margin-left: 0 !important;
   }
 
-  .studio-container.mobile-sidebar-open .chapters-sidebar,
+  .chapters-sidebar.mobile-open,
+.studio-main-3col.mobile-sidebar-open .chapters-sidebar,
+.studio-container.mobile-sidebar-open .chapters-sidebar,
   .gitbook-container.mobile-sidebar-open .chapters-sidebar {
     transform: translateX(0);
   }
@@ -1943,7 +1949,9 @@ main#main-content:not(.playground-column) {
     transition: opacity 0.25s ease;
   }
 
-  .studio-container.mobile-sidebar-open .sidebar-backdrop,
+  .sidebar-backdrop.active,
+.studio-main-3col.mobile-sidebar-open .sidebar-backdrop,
+.studio-container.mobile-sidebar-open .sidebar-backdrop,
   .gitbook-container.mobile-sidebar-open .sidebar-backdrop {
     opacity: 1;
     pointer-events: auto;

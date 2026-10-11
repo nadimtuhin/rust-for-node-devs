@@ -2,16 +2,21 @@
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #fee2e2; color: #b91c1c; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 08 • Career Preparation</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Senior Systems Interview Q&A</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Master the deep technical questions asked at companies like Cloudflare, Discord, AWS, and Figma.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Master the deep technical systems questions asked at Cloudflare, Discord, AWS, and Figma.</p>
   </div>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h3 style="margin-top: 0; color: #0f172a;">Q1: What is the difference between String and &str in memory?</h3>
-    <p style="color: #475569; line-height: 1.6;"><code>String</code> is an owned, growable vector of UTF-8 bytes stored on the heap. Its stack representation is 24 bytes (pointer to heap buffer, capacity, and current length). In contrast, <code>&str</code> is a borrowed string slice consisting of only 16 bytes on the stack: a pointer to existing bytes (which can be on the heap, stack, or static binary data section) and length.</p>
+    <h3 style="margin-top: 0; color: #0f172a;">Q1: What is the exact difference between String and &amp;str in memory?</h3>
+    <p style="color: #475569; line-height: 1.6;"><code>String</code> is an owned, growable vector of UTF-8 bytes stored on the heap. On a 64-bit CPU, its stack footprint is 24 bytes (pointer to heap buffer, capacity, and current length). In contrast, <code>&amp;str</code> is a borrowed string slice consisting of only 16 bytes on the stack: a pointer to existing bytes and length. String slices can point to stack, heap, or static binary data (<code>.rodata</code>).</p>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h3 style="margin-top: 0; color: #0f172a;">Q2: Why does holding std::sync::MutexGuard across an .await point fail to compile?</h3>
+    <p style="color: #475569; line-height: 1.6;"><code>std::sync::MutexGuard</code> explicitly does <strong>not</strong> implement the <code>Send</code> trait because OS-level mutexes (e.g. pthread mutexes) require the unlocking thread to be the identical thread that acquired the lock. Tokio's multi-threaded work-stealing scheduler can yield a task on Thread A and resume it on Thread B. The compiler rejects this at compile time. The idiomatic fix is scoping the synchronous lock to drop before the await, or using message-passing channels.</p>
   </div>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h3 style="margin-top: 0; color: #0f172a;">Q2: Why can't you hold a std::sync::MutexGuard across an .await point in Tokio?</h3>
-    <p style="color: #475569; line-height: 1.6;">When a future yields at an <code>.await</code> point, the Tokio runtime may resume that task on a <em>different worker thread</em>. Standard OS mutexes (like pthread_mutex) require the unlocking thread to be the exact same thread that acquired the lock. Holding an OS mutex across await violates Send bounds or can cause catastrophic deadlocks. The fix is using <code>tokio::sync::Mutex</code> or scoping the lock guard to drop before the await.</p>
+    <h3 style="margin-top: 0; color: #0f172a;">Q3: What is Pin&lt;&amp;mut T&gt; and why is it essential for async Rust?</h3>
+    <p style="color: #475569; line-height: 1.6;">Async functions compile into state machines. When a future holds references across an <code>.await</code> point, it becomes a <strong>self-referential struct</strong> (fields pointing to other fields inside the same struct). If moved in memory, internal pointers become dangling pointers! <code>Pin</code> wraps a pointer to guarantee the underlying data will never move in memory before being dropped.</p>
   </div>
 </div>

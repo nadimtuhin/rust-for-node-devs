@@ -2,11 +2,11 @@
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #fef3c7; color: #d97706; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 03 • Package Management</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Cargo vs npm / pnpm</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Why Rust has no node_modules bloat, how Cargo handles duplicate dependencies, and feature flags.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Additive feature flags, duplicate dependency handling without node_modules, and workspace inheritance.</p>
   </div>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">Rosetta Stone: Commands Mapping</h2>
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">1. Rosetta Stone: Core CLI Workflow</h2>
     <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
       <thead>
         <tr style="border-bottom: 2px solid #e2e8f0; color: #64748b;">
@@ -27,14 +27,19 @@
           <td style="padding: 0.75rem 0.5rem;">Add dependency to Cargo.toml</td>
         </tr>
         <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem;"><code>npx tsc --noEmit</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>cargo check</code></td>
+          <td style="padding: 0.75rem 0.5rem;">Fast type &amp; borrow check without codegen</td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem;"><code>npm run build</code></td>
           <td style="padding: 0.75rem 0.5rem;"><code>cargo build --release</code></td>
-          <td style="padding: 0.75rem 0.5rem;">Compile optimized binary</td>
+          <td style="padding: 0.75rem 0.5rem;">Compile optimized machine code</td>
         </tr>
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem;"><code>npm test</code></td>
           <td style="padding: 0.75rem 0.5rem;"><code>cargo test</code></td>
-          <td style="padding: 0.75rem 0.5rem;">Run unit & integration tests</td>
+          <td style="padding: 0.75rem 0.5rem;">Run unit &amp; integration tests</td>
         </tr>
         <tr>
           <td style="padding: 0.75rem 0.5rem;"><code>npx eslint .</code></td>
@@ -43,5 +48,15 @@
         </tr>
       </tbody>
     </table>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">2. How Cargo Solves the node_modules Problem</h2>
+    <p>In Node.js, duplicate packages often lead to massive nested <code>node_modules</code> and runtime collisions (prototype pollution). Cargo compiles external crates once into target cache. If two dependencies require different major versions (e.g. <code>serde 1.0</code> and <code>serde 0.9</code>), Cargo mangles the symbols and compiles both side-by-side with zero collisions.</p>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">3. Additive Feature Flags</h2>
+    <p>In Rust, crate capabilities are gated behind compile-time feature flags. Features are <strong>strictly additive</strong>: if dependency A enables <code>serde = { features = ["derive"] }</code> and dependency B includes <code>serde</code> without features, Cargo activates the union for the entire compilation unit, preventing duplicate builds.</p>
   </div>
 </div>

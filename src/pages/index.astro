@@ -107,7 +107,7 @@ const initialChapter = chaptersData[initialKey];
         nodeCodeEl.innerHTML = `<code>${data.nodeCode.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>`;
       }
 
-      const whyEl = document.getElementById('detailGoWhy');
+      const whyEl = document.getElementById('detailRustWhy');
       if (whyEl) whyEl.innerText = data.why;
 
       const proTipEl = document.getElementById('detailInsightProTip');

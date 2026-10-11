@@ -5,11 +5,45 @@
     <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Common misconceptions and pitfalls when transitioning from dynamic JavaScript to systems Rust.</p>
   </div>
 
-  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h3 style="margin-top: 0; color: #dc2626;">Footgun 1: Calling .clone() to appease the compiler</h3>
-    <p style="color: #475569; line-height: 1.6;">Calling <code>.clone()</code> duplicates heap memory allocations. If you clone a 50MB buffer on every incoming HTTP request, your performance will be worse than Node.js! Take borrowed references (<code>&T</code>) instead.</p>
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 1.75rem;">
+    <div>
+      <h3 style="margin-top: 0; color: #dc2626;">Footgun 1: Calling .clone() to appease the compiler</h3>
+      <p style="color: #475569; line-height: 1.6;">Calling <code>.clone()</code> duplicates heap memory. If you clone a large buffer on every HTTP request, your service will suffer worse latency than Node.js. Use borrowed references (<code>&amp;T</code>) instead.</p>
+    </div>
 
-    <h3 style="color: #dc2626;">Footgun 2: Blocking the Tokio thread pool</h3>
-    <p style="color: #475569; line-height: 1.6;">Node.js developers used to single-threaded async sometimes use synchronous file reads or <code>std::thread::sleep</code> inside async blocks. In Tokio, this starves worker threads!</p>
+    <div>
+      <h3 style="margin-top: 0; color: #dc2626;">Footgun 2: Blocking the Tokio worker thread pool</h3>
+      <p style="color: #475569; line-height: 1.6;">Calling synchronous file I/O or <code>std::thread::sleep</code> inside an async function blocks the OS worker thread assigned to Tokio, starving hundreds of concurrent requests. Use <code>tokio::time::sleep</code> or <code>tokio::task::spawn_blocking</code>.</p>
+    </div>
+
+    <div>
+      <h3 style="margin-top: 0; color: #dc2626;">Footgun 3: Unbuffered File and Socket I/O</h3>
+      <p style="color: #475569; line-height: 1.6;">In Node.js, stream buffers are automatic. In Rust, calling <code>file.read()</code> or <code>socket.write()</code> performs a direct kernel syscall per operation. Always wrap with <code>BufReader</code> and <code>BufWriter</code>.</p>
+    </div>
+
+    <div>
+      <h3 style="margin-top: 0; color: #dc2626;">Footgun 4: Production .unwrap() &amp; .expect() Panics</h3>
+      <p style="color: #475569; line-height: 1.6;">Calling <code>.unwrap()</code> on <code>None</code> or <code>Err</code> causes a thread panic. In Tokio worker tasks, an unhandled panic aborts the task. Use <code>?</code> error propagation with <code>anyhow</code> or <code>thiserror</code>.</p>
+    </div>
+
+    <div>
+      <h3 style="margin-top: 0; color: #dc2626;">Footgun 5: Cancellation Hazards in tokio::select!</h3>
+      <p style="color: #475569; line-height: 1.6;">When a branch completes in <code>tokio::select!</code>, other pending futures are immediately dropped. If a future is mid-stream on an <code>AsyncRead</code>, partial bytes are lost unless the future is cancellation-safe.</p>
+    </div>
+
+    <div>
+      <h3 style="margin-top: 0; color: #dc2626;">Footgun 6: Holding std::sync::MutexGuard Across .await</h3>
+      <p style="color: #475569; line-height: 1.6;"><code>std::sync::MutexGuard</code> does not implement <code>Send</code>, triggering compile-time errors in <code>tokio::spawn</code>. Scope your locks in a block <code>{ let val = *lock; }</code> so the guard drops before any <code>.await</code>.</p>
+    </div>
+
+    <div>
+      <h3 style="margin-top: 0; color: #dc2626;">Footgun 7: Memory Leaks via Reference Cycles</h3>
+      <p style="color: #475569; line-height: 1.6;">Rust has no cycle-detecting garbage collector. Two structs holding <code>Rc</code> or <code>Arc</code> pointers to each other will never reach a reference count of 0, leaking memory forever. Break cycles with <code>Weak&lt;T&gt;</code>.</p>
+    </div>
+
+    <div>
+      <h3 style="margin-top: 0; color: #dc2626;">Footgun 8: Silent Integer Overflow in --release Mode</h3>
+      <p style="color: #475569; line-height: 1.6;">In debug mode, integer overflow panics. In <code>--release</code> mode, Rust wraps arithmetic using two's complement for speed. For mission-critical calculations, use <code>checked_add()</code> or <code>saturating_add()</code>.</p>
+    </div>
   </div>
 </div>

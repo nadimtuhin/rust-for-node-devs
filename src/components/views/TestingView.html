@@ -2,29 +2,44 @@
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #dcfce7; color: #15803d; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 06 • Quality & Testing</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Testing & Mocking: Jest / Vitest vs Rust</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">First-class built-in test runner, parallel execution by default, and trait-based dependency injection.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Unit tests, integration tests, async tests with tokio::test, and trait mocking with mockall.</p>
   </div>
 
-  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">Built-in Test Module (Unit Testing)</h2>
-    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>pub fn add(a: i32, b: i32) -> i32 {
-    a + b
-}
-
-#[cfg(test)]
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">1. Built-in Synchronous & Async Tests</h2>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>#[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_add() {
-        assert_eq!(add(2, 2), 4);
+    fn test_sync_math() {
+        assert_eq!(2 + 2, 4);
     }
 
-    #[test]
-    #[should_panic(expected = "divide by zero")]
-    fn test_panics() {
-        panic!("divide by zero");
+    #[tokio::test]
+    async fn test_async_fetch() {
+        let result = async_query_user(1).await;
+        assert!(result.is_ok());
     }
+}</code></pre>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">2. Mocking Traits with mockall</h2>
+    <p>JavaScript allows runtime monkey-patching (<code>jest.mock('./api')</code>). In Rust, dependencies are abstracted behind traits and mocked at compile time using <code>mockall</code>:</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>#[mockall::automock]
+pub trait UserRepository {
+    fn get_user(&amp;self, id: u32) -> Result&lt;String, &amp;'static str&gt;;
+}
+
+#[test]
+fn test_service_with_mock() {
+    let mut mock = MockUserRepository::new();
+    mock.expect_get_user()
+        .with(mockall::predicate::eq(42))
+        .returning(|_| Ok("Alice".to_string()));
+
+    assert_eq!(mock.get_user(42).unwrap(), "Alice");
 }</code></pre>
   </div>
 </div>

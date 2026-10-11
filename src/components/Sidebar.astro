@@ -43,7 +43,7 @@ const groupedParts = chaptersList.reduce((acc, [key, ch]) => {
           tabindex="0" 
           aria-label={`Select lesson ${item.title}`} 
           data-id={item.key} 
-          onclick={`selectChapter('${item.key}')`}
+          onclick={`selectChapter('${item.key}')`} onkeydown={`if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectChapter('${item.key}'); }`}
         >
           <span class="chapter-num">{item.num}</span>
           <span>{item.title}</span>
@@ -54,7 +54,7 @@ const groupedParts = chaptersList.reduce((acc, [key, ch]) => {
 
   <div class="sidebar-appendices-footer" style="padding: 1rem; border-top: 1px solid var(--border);">
     <a href="/chapters" class="sidebar-appendices-link" style="color: #b7410e; font-weight: 700; text-decoration: none; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
-      <span>📚 Book Index & Appendices (13)</span>
+      <span>📚 Book Index & Appendices (14)</span>
       <span aria-hidden="true">→</span>
     </a>
   </div>

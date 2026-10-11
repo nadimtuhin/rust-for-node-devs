@@ -14,7 +14,7 @@
     routing::post,
     Json, Router,
 };
-use futures::stream::Stream;
+use futures::stream::{Stream, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::{convert::Infallible, time::Duration};
 use tokio::sync::mpsc;

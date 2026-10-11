@@ -275,7 +275,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 4: Queues & Workers",
     "title": "Exponential Backoff & Dead-Letter Queues",
     "desc": "BullMQ handles retries with backoff strategies. In Rust, exponential backoff with jitter prevents thundering herd problems when downstream services experience outages.",
-    "nodeCode": "// BullMQ backoff config\n{ attempts: 5, backoff: { type: 'exponential', delay: 1000 } }",
+    "nodeCode": "// BullMQ exponential backoff retry configuration\nawait queue.add('process-payment', data, {\n  attempts: 5,\n  backoff: { type: 'exponential', delay: 1000 }\n});",
     "why": "Adding randomized jitter to exponential backoff prevents synchronized retries from overwhelming recovering services.",
     "code": "fn calculate_backoff_with_jitter(attempt: u32, base_ms: u64, max_ms: u64, jitter_percent: f64) -> u64 {\n    let exp = 2u64.pow(attempt);\n    let delay = (base_ms * exp) as f64 * (1.0 + jitter_percent);\n    std::cmp::min(delay as u64, max_ms)\n}\n\nfn main() {\n    let jitter_samples = [0.05, -0.02, 0.08, -0.04, 0.02];\n    for attempt in 0..5 {\n        let ms = calculate_backoff_with_jitter(attempt, 100, 5000, jitter_samples[attempt as usize]);\n        println!(\"Retry attempt {}: backoff with jitter {} ms\", attempt + 1, ms);\n    }\n    println!(\"[DLQ Status] Exhausted 5 retry attempts -> Routed message to Dead-Letter Queue (DLQ)\\n\");\n}"
   },
@@ -482,7 +482,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 8: LeetCode in Rust",
     "title": "Best Time to Buy & Sell Stock (#121)",
     "desc": "Find maximum profit from buying and selling a stock once. Single-pass greedy algorithm tracking minimum price seen so far in O(n) time and O(1) space.",
-    "nodeCode": "// JS Stock Profit\nlet minPrice = Infinity, maxProfit = 0;\nfor (const p of prices) {\n  minPrice = Math.min(minPrice, p);\n  maxProfit = Math.max(maxProfit, p - minPrice);\n}",
+    "nodeCode": "// JS Stock Profit\nfunction maxProfit(prices) {\n  let minPrice = Infinity, maxProfit = 0;\n  for (const p of prices) {\n    minPrice = Math.min(minPrice, p);\n    maxProfit = Math.max(maxProfit, p - minPrice);\n  }\n  return maxProfit;\n}",
     "why": "Single-pass greedy algorithm with zero heap allocations and branch optimization.",
     "code": "fn max_profit(prices: Vec<i32>) -> i32 {\n    let mut min_price = i32::MAX;\n    let mut max_profit = 0;\n\n    for price in prices {\n        if price < min_price {\n            min_price = price;\n        } else if price - min_price > max_profit {\n            max_profit = price - min_price;\n        }\n    }\n    max_profit\n}\n\nfn main() {\n    let prices = vec![7, 1, 5, 3, 6, 4];\n    println!(\"Max profit: {}\", max_profit(prices));\n}"
   },
@@ -491,7 +491,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 8: LeetCode in Rust",
     "title": "Valid Palindrome (#125) \u2014 Two Pointers",
     "desc": "Verify if a string is a palindrome considering only alphanumeric characters and ignoring case. Solved in Rust using two pointers over an iterator with zero heap allocations.",
-    "nodeCode": "// JS Valid Palindrome\nconst clean = s.toLowerCase().replace(/[^a-z0-9]/g, '');\nreturn clean === clean.split('').reverse().join('');",
+    "nodeCode": "// JS Valid Palindrome\nfunction isPalindrome(s) {\n  const clean = s.toLowerCase().replace(/[^a-z0-9]/g, '');\n  return clean === clean.split('').reverse().join('');\n}",
     "why": "Two-pointer in-place traversal avoids allocating new filtered strings.",
     "code": "fn is_palindrome(s: &str) -> bool {\n    let iter = s.chars()\n        .filter(|c| c.is_alphanumeric())\n        .flat_map(|c| c.to_lowercase());\n    iter.clone().eq(iter.rev())\n}\n\nfn main() {\n    println!(\"'A man, a plan, a canal: Panama' is palindrome? {}\", is_palindrome(\"A man, a plan, a canal: Panama\"));\n    println!(\"'race a car' is palindrome? {}\", is_palindrome(\"race a car\"));\n}"
   },
@@ -509,7 +509,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 8: LeetCode in Rust",
     "title": "Maximum Subarray (#53) \u2014 Kadane's Algorithm",
     "desc": "Given an integer array `nums`, find the subarray with the largest sum and return its sum. Kadane's dynamic programming algorithm executes in O(n) time and O(1) space.",
-    "nodeCode": "// JS Kadane's Algorithm\nlet maxSoFar = nums[0], currMax = nums[0];\nfor (let i = 1; i < nums.length; i++) {\n  currMax = Math.max(nums[i], currMax + nums[i]);\n  maxSoFar = Math.max(maxSoFar, currMax);\n}",
+    "nodeCode": "// JS Kadane's Algorithm\nfunction maxSubArray(nums) {\n  let maxSoFar = nums[0], currMax = nums[0];\n  for (let i = 1; i < nums.length; i++) {\n    currMax = Math.max(nums[i], currMax + nums[i]);\n    maxSoFar = Math.max(maxSoFar, currMax);\n  }\n  return maxSoFar;\n}",
     "why": "Kadane's algorithm executes in a single pass with O(1) auxiliary space.",
     "code": "use std::cmp::max;\n\nfn max_sub_array(nums: Vec<i32>) -> i32 {\n    let mut max_so_far = nums[0];\n    let mut current_max = nums[0];\n\n    for &num in nums.iter().skip(1) {\n        current_max = max(num, current_max + num);\n        max_so_far = max(max_so_far, current_max);\n    }\n\n    max_so_far\n}\n\nfn main() {\n    let nums = vec![-2, 1, -3, 4, -1, 2, 1, -5, 4];\n    println!(\"Maximum subarray sum: {}\", max_sub_array(nums));\n}"
   }

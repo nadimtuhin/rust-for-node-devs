@@ -261,7 +261,7 @@ export const chapterInsights: Record<string, ChapterInsight> = {
     "archNote": "Vec pop() returns an Option<T>, naturally avoiding out-of-bounds indexing errors."
   },
   "lc_merge_lists": {
-    "proTip": "Use `extend_from_slice` to append remaining elements in one fast memory copy operation.",
+    "proTip": "Use `*tail = l1.or(l2);` to attach whichever non-empty list remains in a single pointer reassignment.",
     "footgun": "Creating true linked lists in Rust requires `Option<Box<ListNode>>`; vectors are almost always faster in practice.",
     "archNote": "Because CPUs prefetch contiguous arrays into cache lines, array merges drastically outperform linked lists."
   },
@@ -272,7 +272,7 @@ export const chapterInsights: Record<string, ChapterInsight> = {
   },
   "lc_valid_palindrome": {
     "proTip": "Use `c.is_alphanumeric()` and `c.to_ascii_lowercase()` for fast ASCII character normalization.",
-    "footgun": "Be careful with unsigned integer underflow if decrementing `right` past 0 without checking bounds.",
+    "footgun": "Calling `.to_lowercase()` produces an iterator of chars rather than a single char for unicode casing differences; use `.flat_map(|c| c.to_lowercase())`.",
     "archNote": "In-place comparison eliminates the regex engine overhead commonly present in JavaScript solutions."
   },
   "lc_reverse_linked_list": {

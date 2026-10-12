@@ -1,49 +1,60 @@
 <div class="appendix-container" style="max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #fee2e2; color: #b91c1c; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 11 • Footguns</span>
-    <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Top 8 Rust Footguns for Node Developers</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Common misconceptions and pitfalls when transitioning from dynamic JavaScript to systems Rust.</p>
+    <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Top 10 Rust Footguns for Node Developers</h1>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Common misconceptions, memory traps, and async hazards when transitioning from dynamic JavaScript to systems Rust.</p>
   </div>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 1.75rem;">
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 1: Calling .clone() to appease the compiler</h3>
-      <p style="color: #475569; line-height: 1.6;">Calling <code>.clone()</code> duplicates heap memory. If you clone a large buffer on every HTTP request, your service will suffer worse latency than Node.js. Use borrowed references (<code>&amp;T</code>) instead.</p>
+      <p style="color: #475569; line-height: 1.6;">Calling <code>.clone()</code> duplicates heap memory. If you clone a large buffer on every HTTP request, your service will suffer worse latency than Node.js. Use borrowed references (<code>&amp;T</code>) or zero-copy reference counting (<code>Arc&lt;T&gt;</code>) instead.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 2: Blocking the Tokio worker thread pool</h3>
-      <p style="color: #475569; line-height: 1.6;">Calling synchronous file I/O or <code>std::thread::sleep</code> inside an async function blocks the OS worker thread assigned to Tokio, starving hundreds of concurrent requests. Use <code>tokio::time::sleep</code> or <code>tokio::task::spawn_blocking</code>.</p>
+      <p style="color: #475569; line-height: 1.6;">Calling synchronous file I/O or <code>std::thread::sleep</code> inside an async function blocks the OS worker thread assigned to Tokio, starving hundreds of concurrent requests. Offload CPU-heavy or blocking work to <code>tokio::task::spawn_blocking</code> or use <code>tokio::time::sleep</code>.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 3: Unbuffered File and Socket I/O</h3>
-      <p style="color: #475569; line-height: 1.6;">In Node.js, stream buffers are automatic. In Rust, calling <code>file.read()</code> or <code>socket.write()</code> performs a direct kernel syscall per operation. Always wrap with <code>BufReader</code> and <code>BufWriter</code>.</p>
+      <p style="color: #475569; line-height: 1.6;">In Node.js, stream buffers are automatic. In Rust, calling <code>file.read()</code> or <code>socket.write()</code> directly performs a separate kernel syscall for every call. Always wrap with <code>BufReader</code> and <code>BufWriter</code> to coalesce I/O operations into 8KB buffer blocks.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 4: Production .unwrap() &amp; .expect() Panics</h3>
-      <p style="color: #475569; line-height: 1.6;">Calling <code>.unwrap()</code> on <code>None</code> or <code>Err</code> causes a thread panic. In Tokio worker tasks, an unhandled panic aborts the task. Use <code>?</code> error propagation with <code>anyhow</code> or <code>thiserror</code>.</p>
+      <p style="color: #475569; line-height: 1.6;">Calling <code>.unwrap()</code> on <code>None</code> or <code>Err</code> causes a thread panic. In Tokio worker tasks, an unhandled panic aborts the task. Use <code>?</code> error propagation with <code>anyhow</code> for applications or <code>thiserror</code> for domain libraries.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 5: Cancellation Hazards in tokio::select!</h3>
-      <p style="color: #475569; line-height: 1.6;">When a branch completes in <code>tokio::select!</code>, other pending futures are immediately dropped. If a future is mid-stream on an <code>AsyncRead</code>, partial bytes are lost unless the future is cancellation-safe.</p>
+      <p style="color: #475569; line-height: 1.6;">When a branch completes in <code>tokio::select!</code>, other pending futures are immediately dropped. If a future is mid-stream on an <code>AsyncReadExt::read_exact</code> or <code>AsyncWriteExt::write_all</code>, partial bytes are lost unless the future is cancellation-safe. Prefer atomic or framed read operations.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 6: Holding std::sync::MutexGuard Across .await</h3>
-      <p style="color: #475569; line-height: 1.6;"><code>std::sync::MutexGuard</code> does not implement <code>Send</code>, triggering compile-time errors in <code>tokio::spawn</code>. Scope your locks in a block <code>{ let val = *lock; }</code> so the guard drops before any <code>.await</code>.</p>
+      <p style="color: #475569; line-height: 1.6;"><code>std::sync::MutexGuard</code> does not implement <code>Send</code>, triggering compile-time errors in <code>tokio::spawn</code>. If held across `.await`, it can also deadlock the Tokio worker thread pool. Scope your locks in a block <code>{ let val = *lock; }</code> or use <code>tokio::sync::Mutex</code> only when holding state across async boundaries.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 7: Memory Leaks via Reference Cycles</h3>
-      <p style="color: #475569; line-height: 1.6;">Rust has no cycle-detecting garbage collector. Two structs holding <code>Rc</code> or <code>Arc</code> pointers to each other will never reach a reference count of 0, leaking memory forever. Break cycles with <code>Weak&lt;T&gt;</code>.</p>
+      <p style="color: #475569; line-height: 1.6;">Rust has no cycle-detecting garbage collector. Two structs holding <code>Rc</code> or <code>Arc</code> pointers to each other will never reach a reference count of 0, leaking memory forever. Break cycles with <code>Weak&lt;T&gt;</code> downgrade pointers.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 8: Silent Integer Overflow in --release Mode</h3>
-      <p style="color: #475569; line-height: 1.6;">In debug mode, integer overflow panics. In <code>--release</code> mode, Rust wraps arithmetic using two's complement for speed. For mission-critical calculations, use <code>checked_add()</code> or <code>saturating_add()</code>.</p>
+      <p style="color: #475569; line-height: 1.6;">In debug mode, integer overflow panics. In <code>--release</code> mode, Rust wraps arithmetic using two's complement for speed. For mission-critical calculations (financial transactions, indexing counters), use <code>checked_add()</code> or <code>saturating_add()</code>.</p>
     </div>
+
+    <div>
+      <h3 style="margin-top: 0; color: #dc2626;">Footgun 9: Self-Referential Structs &amp; Pin Mechanics</h3>
+      <p style="color: #475569; line-height: 1.6;">JavaScript objects can freely reference other fields on themselves. In Rust, a struct cannot safely store a pointer or reference to another of its own fields because moving the struct (by returning it or passing by value) changes its memory address, turning internal pointers into dangling pointers. Rust uses <code>Pin&lt;P&gt;</code> to guarantee a value cannot move in memory before its destructor runs.</p>
+    </div>
+
+    <div>
+      <h3 style="margin-top: 0; color: #dc2626;">Footgun 10: Destructor Leaks via std::mem::forget &amp; Thread Panics</h3>
+      <p style="color: #475569; line-height: 1.6;">Rust guarantees memory safety, but does NOT guarantee that destructors (the <code>Drop</code> trait) will always execute! Calling <code>std::mem::forget()</code>, encountering an aborting panic, or crashing inside an active process leaves file descriptors, socket locks, or temporary directory markers uncleaned on the system.</p>
+    </div>
+  </div>
   </div>
 </div>

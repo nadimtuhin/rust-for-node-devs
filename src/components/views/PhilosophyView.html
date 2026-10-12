@@ -54,5 +54,19 @@
         Attempting to share non-thread-safe state (such as <code>Rc&lt;RefCell&lt;T&gt;&gt;</code>) across threads fails at compile time with a clear error pointing out the missing <code>Send/Sync</code> implementation.
       </p>
     </div>
+
+    <!-- Pillar 4 -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+        <span style="background: #f3e8ff; color: #9333ea; padding: 0.25rem 0.65rem; border-radius: 6px; font-weight: 800; font-size: 0.85rem;">PILLAR 4</span>
+        <h2 style="font-size: 1.35rem; font-weight: 700; margin: 0; color: #0f172a;">Correctness: The Typestate Pattern &amp; Parse, Don't Validate</h2>
+      </div>
+      <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
+        In JavaScript, invalid states are detected via defensive runtime assertions (e.g. <code>if (!req.isAuthenticated) throw new Error(...)</code>), leaving room for forgotten checks and subtle security bypasses.
+      </p>
+      <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
+        Rust embraces <em>"Parse, Don't Validate"</em> and the <strong>Typestate Pattern</strong> using Zero-Sized Types (ZSTs). States are encoded directly into generic types (e.g. <code>Connection&lt;Unauthenticated&gt;</code> transitioning by value consumption into <code>Connection&lt;Authenticated&gt;</code>). It is literally impossible to call restricted methods (like <code>send_query()</code>) on an unauthenticated connection—the code fails to compile with zero runtime footprint.
+      </p>
+    </div>
   </div>
 </div>

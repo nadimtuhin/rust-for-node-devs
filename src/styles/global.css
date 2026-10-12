@@ -1938,15 +1938,6 @@ main#main-content:not(.playground-column) {
 }
 
 @media (max-width: 1024px) {
-  .chapters-sidebar {
-    width: 280px;
-  }
-  .lesson-detail-panel {
-    width: 340px;
-  }
-}
-
-@media (max-width: 860px) {
   .studio-main-3col {
     flex-direction: column;
     height: auto;
@@ -1968,8 +1959,7 @@ main#main-content:not(.playground-column) {
     top: 54px;
     bottom: 0;
     left: 0;
-    width: 82%;
-    max-width: 320px;
+    width: min(320px, 85vw);
     max-height: none;
     z-index: 200;
     border-right: 1px solid var(--border);

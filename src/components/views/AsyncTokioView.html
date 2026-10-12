@@ -7,21 +7,23 @@
 
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem;">
-      <h3 style="margin-top: 0; color: #16a34a; font-size: 1.2rem;">🟢 Node.js (libuv)</h3>
+      <h3 style="margin-top: 0; color: #16a34a; font-size: 1.2rem;">🟢 Node.js (libuv + V8)</h3>
       <ul style="padding-left: 1.25rem; color: #475569; line-height: 1.6;">
-        <li><strong>Single-threaded:</strong> Javascript executes on exactly one thread.</li>
-        <li><strong>Push-based:</strong> Callbacks pushed to microtask/macrotask queues.</li>
-        <li><strong>Event loop blocking:</strong> Heavy CPU computations freeze all incoming HTTP requests.</li>
-        <li><strong>Promises:</strong> Eager evaluation (starts executing immediately upon instantiation).</li>
+        <li><strong>Single-threaded JS Engine:</strong> User JavaScript executes on one V8 thread.</li>
+        <li><strong>Fixed libuv Threadpool:</strong> File I/O, DNS, and crypto offload to a 4-thread pool (<code>UV_THREADPOOL_SIZE</code>).</li>
+        <li><strong>Push-based Queues:</strong> Callbacks pushed to microtask (Promise) and macrotask (timers, I/O) queues.</li>
+        <li><strong>Event loop starvation:</strong> Intensive CPU computation on the main thread blocks all HTTP routing and I/O handlers.</li>
+        <li><strong>Eager Promises:</strong> Promises start executing immediately upon instantiation.</li>
       </ul>
     </div>
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem;">
       <h3 style="margin-top: 0; color: #b7410e; font-size: 1.2rem;">🦀 Rust (Tokio)</h3>
       <ul style="padding-left: 1.25rem; color: #475569; line-height: 1.6;">
-        <li><strong>Multi-threaded:</strong> Work-stealing scheduler across all physical CPU cores.</li>
-        <li><strong>Pull-based:</strong> Futures are polled only when awakened by <code>Waker</code>.</li>
-        <li><strong>CPU isolation:</strong> CPU tasks run cleanly on <code>tokio::task::spawn_blocking</code> or Rayon.</li>
-        <li><strong>Futures:</strong> Lazy evaluation (does nothing until polled with <code>.await</code>).</li>
+        <li><strong>Work-Stealing Multi-Threading:</strong> Tasks distributed dynamically across OS worker threads matching CPU cores.</li>
+        <li><strong>OS I/O Multiplexing:</strong> Non-blocking network I/O driven directly by <code>mio</code> (epoll on Linux, kqueue on macOS).</li>
+        <li><strong>Pull-based Futures:</strong> State machines are lazy and only execute when polled by the executor via <code>Waker</code>.</li>
+        <li><strong>Isolated Blocking Pool:</strong> Blocking file/CPU operations isolated via <code>tokio::task::spawn_blocking</code> (up to 512 threads).</li>
+        <li><strong>Task Budgets:</strong> Cooperative scheduling yields periodically (co-op budget) to prevent task starvation.</li>
       </ul>
     </div>
   </div>

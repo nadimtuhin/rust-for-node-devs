@@ -103,9 +103,9 @@ window.chaptersData = {
     "part": "Part 1: Web APIs & Axum",
     "title": "Shared State with Arc<T> vs Global Singletons",
     "desc": "Node.js shares module-level variables across all requests because of the single-threaded event loop. Rust web servers are multi-threaded: shared state requires thread-safe reference counting (`Arc<T>`).",
-    "nodeCode": "// Node.js module singleton (shared across all requests)\nlet dbConnection: unknown = null;\n\nexport function getDb() {\n  if (!dbConnection) {\n    dbConnection = { host: 'localhost', port: 5432 };\n  }\n  return dbConnection;\n}",
+    "nodeCode": "// In Node.js, async connection singletons must guard against boot races\nlet poolPromise: Promise<{ host: string; port: number }> | null = null;\n\nexport async function getDbPool() {\n  if (!poolPromise) {\n    poolPromise = Promise.resolve({ host: 'localhost', port: 5432 });\n  }\n  return poolPromise;\n}",
     "why": "Arc<T> ensures safe thread-safe reference sharing without global mutable state corruption.",
-    "code": "use std::sync::Arc;\nuse std::sync::atomic::{AtomicUsize, Ordering};\n\nstruct AppState {\n    request_counter: AtomicUsize,\n    db_pool_name: String,\n}\n\nfn main() {\n    // Wrap state in thread-safe reference counted pointer\n    let shared_state = Arc::new(AppState {\n        request_counter: AtomicUsize::new(0),\n        db_pool_name: \"PostgreSQL-Pool-1\".to_string(),\n    });\n\n    // Clone pointer for another thread or request\n    let worker_state = Arc::clone(&shared_state);\n    worker_state.request_counter.fetch_add(1, Ordering::SeqCst);\n\n    println!(\"Pool: {}\", shared_state.db_pool_name);\n    println!(\"Requests: {}\", shared_state.request_counter.load(Ordering::SeqCst));\n}"
+    "code": "use std::sync::Arc;\nuse std::sync::atomic::{AtomicUsize, Ordering};\n\nstruct AppState {\n    request_counter: AtomicUsize,\n    db_pool_name: String,\n}\n\nfn main() {\n    // Wrap state in thread-safe reference counted pointer\n    let shared_state = Arc::new(AppState {\n        request_counter: AtomicUsize::new(0),\n        db_pool_name: \"PostgreSQL-Pool-1\".to_string(),\n    });\n\n    // Clone pointer for another thread or request\n    let worker_state = Arc::clone(&shared_state);\n    // Monotonic request counter: Relaxed ordering is optimal and hardware-efficient\n    worker_state.request_counter.fetch_add(1, Ordering::Relaxed);\n\n    println!(\"Pool: {}\", shared_state.db_pool_name);\n    println!(\"Requests: {}\", shared_state.request_counter.load(Ordering::Relaxed));\n}"
   },
   "tower_middleware": {
     "num": "3",
@@ -121,9 +121,9 @@ window.chaptersData = {
     "part": "Part 1: Web APIs & Axum",
     "title": "HTTP Client: fetch / axios vs reqwest",
     "desc": "Node.js uses global `fetch()` or `axios`. In Rust, `reqwest` is the de-facto production HTTP client with built-in connection pooling, compression, JSON serialization, and streaming support.",
-    "nodeCode": "// Node.js 18+ native global fetch\nconst res = await fetch('https://api.github.com/zen');\nconst text = await res.text();\nconsole.log(text);",
+    "nodeCode": "// Node.js 18+ native global fetch (verifying res.ok status)\nconst res = await fetch('https://api.github.com/zen');\nif (!res.ok) {\n  throw new Error(`HTTP ${res.status}: ${res.statusText}`);\n}\nconst text = await res.text();\nconsole.log(text);",
     "why": "Connection pooling is reused automatically across requests with static typing for incoming payloads.",
-    "code": "// Simulated HTTP client response parsing pattern\nstruct Client;\nimpl Client {\n    fn get(&self, url: &str) -> Result<String, &'static str> {\n        if url.is_empty() { return Err(\"Empty URL\"); }\n        Ok(format!(\"Mock response from {}\", url))\n    }\n}\n\nfn main() {\n    let client = Client;\n    match client.get(\"https://api.example.com/status\") {\n        Ok(body) => println!(\"Body: {}\", body),\n        Err(e) => eprintln!(\"HTTP Error: {}\", e),\n    }\n}"
+    "code": "// In reqwest: client.get(url).send().await?.error_for_status()?.text().await?\n#[derive(Debug)]\nstruct MockResponse { status: u16, body: String }\n\nstruct Client;\nimpl Client {\n    fn get(&self, url: &str) -> Result<MockResponse, &'static str> {\n        if url.is_empty() { return Err(\"Empty URL\"); }\n        Ok(MockResponse { status: 200, body: format!(\"Mock response from {}\", url) })\n    }\n}\n\nfn main() {\n    let client = Client;\n    match client.get(\"https://api.example.com/status\") {\n        Ok(resp) if resp.status == 200 => println!(\"Body: {}\", resp.body),\n        Ok(resp) => eprintln!(\"HTTP Status: {}\", resp.status),\n        Err(e) => eprintln!(\"HTTP Error: {}\", e),\n    }\n}"
   },
   "serde_json": {
     "num": "5",
@@ -267,7 +267,7 @@ window.chaptersData = {
     "desc": "BullMQ handles retries with backoff strategies. In Rust, exponential backoff with jitter prevents thundering herd problems when downstream services experience outages.",
     "nodeCode": "import { Queue } from 'bullmq';\nconst queue = new Queue('payments');\n\n// BullMQ exponential backoff retry configuration\nawait queue.add('process-payment', { amount: 100 }, {\n  attempts: 5,\n  backoff: { type: 'exponential', delay: 1000 }\n});",
     "why": "Adding randomized jitter to exponential backoff prevents synchronized retries from overwhelming recovering services.",
-    "code": "fn calculate_backoff_with_jitter(attempt: u32, base_ms: u64, max_ms: u64, jitter_percent: f64) -> u64 {\n    let exp = 2u64.pow(attempt);\n    let delay = (base_ms * exp) as f64 * (1.0 + jitter_percent);\n    std::cmp::min(delay as u64, max_ms)\n}\n\nfn main() {\n    let jitter_samples = [0.05, -0.02, 0.08, -0.04, 0.02];\n    for attempt in 0..5 {\n        let ms = calculate_backoff_with_jitter(attempt, 100, 5000, jitter_samples[attempt as usize]);\n        println!(\"Retry attempt {}: backoff with jitter {} ms\", attempt + 1, ms);\n    }\n    println!(\"[DLQ Status] Exhausted 5 retry attempts -> Routed message to Dead-Letter Queue (DLQ)\\n\");\n}"
+    "code": "fn calculate_backoff_with_jitter(attempt: u32, base_ms: u64, max_ms: u64, jitter_factor: f64) -> u64 {\n    // Prevent integer bitshift overflow on large retry attempts\n    let exp = 1u64.checked_shl(attempt.min(30)).unwrap_or(u64::MAX);\n    let raw_delay = base_ms.saturating_mul(exp).min(max_ms);\n    let jittered = (raw_delay as f64 * (1.0 + jitter_factor)).max(0.0);\n    (jittered as u64).min(max_ms)\n}\n\nfn main() {\n    let jitter_samples = [0.05, -0.02, 0.08, -0.04, 0.02];\n    for attempt in 0..5 {\n        let ms = calculate_backoff_with_jitter(attempt, 100, 5000, jitter_samples[attempt as usize]);\n        println!(\"Retry attempt {}: backoff with jitter {} ms\", attempt + 1, ms);\n    }\n    println!(\"[DLQ Status] Exhausted 5 retry attempts -> Routed message to Dead-Letter Queue (DLQ)\\n\");\n}"
   },
   "tokio_spawn": {
     "num": "21",
@@ -283,7 +283,7 @@ window.chaptersData = {
     "part": "Part 5: Async & Tokio",
     "title": "Promise.race vs tokio::select!",
     "desc": "Node.js uses `Promise.race()` to await the fastest promise. Rust provides `tokio::select!`, which can simultaneously await futures, channel receives, and timeouts, canceling unselected branches.",
-    "nodeCode": "// Promise.race selects the fastest promise\nconst fetchData = async () => 'data';\nconst timeout = (ms: number) => new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms));\n\nconst result = await Promise.race([fetchData(), timeout(5000)]);",
+    "nodeCode": "// In Node.js, Promise.race does NOT cancel losers! The loser promise continues in background.\nconst fetchData = async () => 'data';\nconst timeout = (ms) => new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms));\n\nconst result = await Promise.race([fetchData(), timeout(5000)]);",
     "why": "tokio::select! drops unselected futures immediately, cancelling them cleanly without lingering background execution.",
     "code": "// Simulation of select race pattern\nenum RaceResult {\n    Data(&'static str),\n    Timeout,\n}\n\nfn race_operation(fast: bool) -> RaceResult {\n    if fast { RaceResult::Data(\"Payload ready\") } else { RaceResult::Timeout }\n}\n\nfn main() {\n    match race_operation(true) {\n        RaceResult::Data(d) => println!(\"Fastest branch won: {}\", d),\n        RaceResult::Timeout => println!(\"Operation timed out!\"),\n    }\n}"
   },
@@ -319,7 +319,7 @@ window.chaptersData = {
     "part": "Part 5: Async & Tokio",
     "title": "Graceful Shutdown & OS Signal Handling",
     "desc": "In Node.js, `process.on('SIGTERM')` handles shutdown. In Rust, Axum and Tokio provide `.with_graceful_shutdown()` to drain in-flight HTTP requests, commit transactions, and close sockets cleanly.",
-    "nodeCode": "import http from 'node:http';\nconst server = http.createServer();\n\n// Node.js SIGTERM graceful shutdown handler\nprocess.on('SIGTERM', () => {\n  server.close(() => process.exit(0));\n});",
+    "nodeCode": "import http from 'node:http';\nconst server = http.createServer();\n\n// Node.js SIGTERM graceful shutdown with idle keep-alive socket closing\nprocess.on('SIGTERM', () => {\n  server.close(() => process.exit(0));\n  if (typeof server.closeIdleConnections === 'function') {\n    server.closeIdleConnections();\n  }\n});",
     "why": "Graceful shutdown drains in-flight requests during zero-downtime rolling Kubernetes deployments.",
     "code": "use std::sync::atomic::{AtomicBool, Ordering};\nuse std::sync::Arc;\n\nstruct Server {\n    is_running: Arc<AtomicBool>,\n}\n\nimpl Server {\n    fn shutdown(&self) {\n        println!(\"Received SIGTERM: Draining in-flight requests...\");\n        self.is_running.store(false, Ordering::SeqCst);\n        println!(\"All connections drained. Server terminated cleanly.\");\n    }\n}\n\nfn main() {\n    let server = Server { is_running: Arc::new(AtomicBool::new(true)) };\n    println!(\"Server running on :8080\");\n    server.shutdown();\n}"
   },

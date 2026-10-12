@@ -13,10 +13,10 @@
         <h2 style="font-size: 1.35rem; font-weight: 700; margin: 0; color: #0f172a;">Safety: Compile-Time Ownership Over Tracing GC</h2>
       </div>
       <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
-        Node.js relies on V8's Generational Tracing Garbage Collector (Scavenger + Mark-Sweep-Compact), which introduces non-deterministic latency spikes (Stop-The-World pauses) and non-deterministic memory spikes.
+        Node.js relies on V8's Generational Garbage Collector (Scavenger + concurrent Mark-Sweep-Compact). Despite modern concurrent marking, GC cycles incur high memory amplification (often 2-3× heap overhead) and non-deterministic deallocation pauses.
       </p>
       <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
-        Rust eliminates GC pauses entirely via an <strong>Affine Type System</strong>. Every value has a single owner. Lifetimes and borrow rules enforce <code>Aliasing XOR Mutability</code> (you may have either multiple immutable references <code>&T</code> OR exactly one exclusive mutable reference <code>&mut T</code>, but never both). This statically prevents use-after-free, double-free, dangling pointers, and iterator invalidation before code ever compiles.
+        Rust eliminates GC pauses entirely via an <strong>Affine Type System</strong> and deterministic RAII. Every value has a single owner. Lifetimes and borrow rules enforce <code>Aliasing XOR Mutability</code> (you may have either multiple immutable references <code>&amp;T</code> OR exactly one exclusive mutable reference <code>&amp;mut T</code>, never both). This statically prevents use-after-free, double-free, dangling pointers, and iterator invalidation before code ever compiles.
       </p>
     </div>
 
@@ -41,7 +41,7 @@
         <h2 style="font-size: 1.35rem; font-weight: 700; margin: 0; color: #0f172a;">Fearless Concurrency: The Send & Sync Auto Traits</h2>
       </div>
       <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
-        Node.js sidestepped multi-threaded concurrency entirely by restricting execution to a single event loop thread, paying heavy IPC serialization overhead when scaling via <code>worker_threads</code> or cluster forks.
+        Node.js restricts application code to a single event loop thread, delegating blocking tasks to a fixed 4-thread libuv pool. Scaling CPU work across <code>worker_threads</code> lacks safe, typed shared-memory mutation without manual byte buffer marshaling or <code>SharedArrayBuffer</code> synchronization.
       </p>
       <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
         Rust enables multi-core shared-memory parallelism without data races. The compiler automatically derives two marker traits:

@@ -61,9 +61,9 @@ panic = "abort"        # Drops unwinding tables, significantly shrinking binary 
     </ul>
 
     <p style="margin-top: 1rem;">MUSL multi-stage Dockerfile:</p>
-    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Build statically linked binary with musl target
-FROM rust:1.84-alpine AS builder
-RUN apk add --no-cache musl-dev
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Build statically linked binary with musl target using Debian + rustup
+FROM rust:1.84-bookworm AS builder
+RUN apt-get update && apt-get install -y --no-install-recommends musl-tools musl-dev && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Add the appropriate MUSL target triplet

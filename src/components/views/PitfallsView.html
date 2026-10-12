@@ -33,7 +33,7 @@
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 6: Holding std::sync::MutexGuard Across .await</h3>
-      <p style="color: #475569; line-height: 1.6;"><code>std::sync::MutexGuard</code> does not implement <code>Send</code>, triggering compile-time errors in <code>tokio::spawn</code>. If held across `.await`, it can also deadlock the Tokio worker thread pool. Scope your locks in a block <code>{ let val = *lock; }</code> or use <code>tokio::sync::Mutex</code> only when holding state across async boundaries.</p>
+      <p style="color: #475569; line-height: 1.6;">Holding a <code>std::sync::MutexGuard</code> across an <code>.await</code> point makes the enclosing future <code>!Send</code>, preventing it from being spawned with <code>tokio::spawn</code>. Because Tokio uses a multi-threaded work-stealing scheduler, tasks can resume on a different OS thread, violating OS-level mutex invariants (unlocking a <code>pthread_mutex_t</code> from a different thread is undefined behavior or returns <code>EPERM</code>). Furthermore, keeping an OS mutex held while suspended can deadlock Tokio worker threads. Scope synchronous locks in tight blocks <code>{ let val = *lock; }</code> or use <code>tokio::sync::Mutex</code> when locks must span async yields.</p>
     </div>
 
     <div>

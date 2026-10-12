@@ -122,7 +122,10 @@ const initialChapter = chaptersData[initialKey];
 
       const nodeCodeEl = document.getElementById('detailNodeCode');
       if (nodeCodeEl) {
-        nodeCodeEl.innerHTML = `<code>${data.nodeCode.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code>`;
+        const highlighted = typeof highlightJS === 'function'
+          ? highlightJS(data.nodeCode)
+          : (window.highlightJS ? window.highlightJS(data.nodeCode) : data.nodeCode.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'));
+        nodeCodeEl.innerHTML = `<code>${highlighted}</code>`;
       }
 
       const whyEl = document.getElementById('detailRustWhy');

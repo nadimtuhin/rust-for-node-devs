@@ -25,9 +25,10 @@ test.describe('Rust for Node Devs - E2E Test Suite', () => {
     await expect(lessonTitle).toBeVisible();
     await expect(lessonTitle).not.toBeEmpty();
 
-    // Verify code block exists
+    // Verify code block exists and is syntax highlighted
     const nodeCode = page.locator('#detailNodeCode');
     await expect(nodeCode).toBeVisible();
+    await expect(nodeCode.locator('.tok-keyword').first()).toBeVisible();
 
     // Verify Playground section and Run button exist
     const playground = page.locator('#playgroundSection');
@@ -73,6 +74,11 @@ test.describe('Rust for Node Devs - E2E Test Suite', () => {
     // Detail ID badge should reflect the chapter
     const detailId = page.locator('#detailId');
     await expect(detailId).toBeVisible();
+
+    // Verify syntax highlighting is applied client-side upon chapter switch
+    const nodeCode = page.locator('#detailNodeCode');
+    await expect(nodeCode.locator('.tok-keyword').first()).toBeVisible();
+    await expect(nodeCode.locator('.tok-string').first()).toBeVisible();
   });
 
   test('Direct route to chapter page (/chapter/[id]) renders content and layout', async ({ page }) => {
@@ -103,6 +109,12 @@ test.describe('Rust for Node Devs - E2E Test Suite', () => {
       expect(response?.status()).toBe(200);
       const main = page.locator('main');
       await expect(main).toBeVisible();
+
+      // Check syntax highlighting in pre/code elements
+      const codeSnippet = page.locator('pre code, table code').first();
+      if (await codeSnippet.count() > 0) {
+        await expect(codeSnippet.locator('.tok-keyword, .tok-attr, .tok-comment, .tok-string').first()).toBeVisible();
+      }
     }
   });
 

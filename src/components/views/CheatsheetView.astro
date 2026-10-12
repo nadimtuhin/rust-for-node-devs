@@ -1,4 +1,7 @@
 ---
 import htmlContent from "./CheatsheetView.html?raw";
+import { highlightCodeInHtml } from "../../utils/highlight";
+
+const processedContent = highlightCodeInHtml(htmlContent);
 ---
-<Fragment set:html={htmlContent} />
+<Fragment set:html={processedContent} />

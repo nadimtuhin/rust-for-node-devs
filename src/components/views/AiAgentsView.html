@@ -87,7 +87,8 @@ impl Tool for CalcTool {
         ToolDefinition {
             name: Self::NAME.to_string(),
             description: "Calculates the sum of two numbers".to_string(),
-            parameters: schemars::schema_for!(CalcArgs),
+            parameters: serde_json::to_value(schemars::schema_for!(CalcArgs))
+                .unwrap_or_default(),
         }
     }
 
@@ -134,16 +135,13 @@ pub fn sample_next_token(
     logits: &Tensor, 
     logits_processor: &mut LogitsProcessor
 ) -> Result&lt;u32, candle_core::Error&gt; {
-    // Support both 3D [batch, seq_len, vocab_size] and 2D [batch, vocab_size] tensor outputs
-    let next_token_logits = if logits.dims().len() == 3 {
-        let seq_len = logits.dim(1)?;
-        logits.i((0, seq_len - 1, ..))?
-    } else if logits.dims().len() == 2 {
-        logits.i((0, ..))?
-    } else {
-        logits.clone()
+    // Extract last sequence step logits into 1D [vocab_size] tensor for LogitsProcessor
+    let next_token_logits = match logits.dims() {
+        [_, seq_len, _] => logits.i((0, seq_len - 1, ..))?, // 3D -> 1D [vocab_size]
+        [_, _] => logits.i((0, ..))?,                        // 2D -> 1D [vocab_size]
+        [_] => logits.clone(),                               // Already 1D [vocab_size]
+        dims => candle_core::bail!("Unexpected logits dimensions: {:?}", dims),
     };
-    let next_token_logits = next_token_logits.squeeze(0).unwrap_or(next_token_logits);
 
     // Sample next token ID via temperature & top-p/top-k logic
     let next_token_id = logits_processor.sample(&next_token_logits)?;

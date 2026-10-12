@@ -59,7 +59,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 0: Language Basics",
     "title": "Option<T> \u2014 Banishing null & undefined",
     "desc": "Rust has no null or undefined. Optional presence is explicitly wrapped in the Option<T> enum: Some(T) or None. You cannot access the inner value without unwrapping or matching.",
-    "nodeCode": "// Node.js null can crash at runtime\nfunction findUser(id) { return id === 1 ? { name: 'Alice' } : null; }\nconst user = findUser(2);\n// TypeError: Cannot read properties of null",
+    "nodeCode": "// Node.js null crashes at runtime when unchecked\nfunction findUser(id) { return id === 1 ? { name: 'Alice' } : null; }\nconst user = findUser(2);\n// Accessing properties directly triggers runtime crash:\nconsole.log(user?.name ?? 'Not found'); // Safe with optional chaining, but user.name throws TypeError!",
     "why": "Option<T> makes null pointer exceptions impossible by enforcing compile-time handling of absence.",
     "code": "fn find_user(id: u32) -> Option<String> {\n    if id == 1 { Some(\"Alice\".to_string()) } else { None }\n}\n\nfn main() {\n    let user1 = find_user(1);\n    let user2 = find_user(99);\n\n    match user1 {\n        Some(name) => println!(\"Found: {}\", name),\n        None => println!(\"Not found\"),\n    }\n\n    let display = user2.unwrap_or_else(|| \"Guest\".to_string());\n    println!(\"Fallback: {}\", display);\n}"
   },
@@ -347,7 +347,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 6: Systems Internals",
     "title": "NAPI-RS: Accelerating Node.js with Rust",
     "desc": "Instead of rewriting your entire Node.js backend, you can write performance-critical modules in Rust and compile them directly to native Node.js addons using `napi-rs` with zero V8 GC overhead.",
-    "nodeCode": "// Native ESM import of NAPI-RS compiled addon\nimport { createHash } from 'node:crypto';\nimport { calculateHash } from './index.node';\n\nconst payload = Buffer.from('high-throughput payload');\nconst rustHash = calculateHash(payload);\nconsole.log({ rustHash });",
+    "nodeCode": "// Native ESM import of NAPI-RS compiled addon\nimport { calculateHash } from './index.node';\n\nconst payload = Buffer.from('high-throughput payload');\nconst rustHash = calculateHash(payload);\nconsole.log({ rustHash });",
     "why": "Native addons execute at C speed directly within Node.js processes, offloading CPU-intensive tasks from the V8 event loop.",
     "code": "// Conceptual NAPI-RS export pattern in Rust\nfn fast_fibonacci(n: u32) -> u64 {\n    match n {\n        0 => 0,\n        1 => 1,\n        _ => {\n            let mut a = 0;\n            let mut b = 1;\n            for _ in 2..=n {\n                let temp = a + b;\n                a = b;\n                b = temp;\n            }\n            b\n        }\n    }\n}\n\nfn main() {\n    let result = fast_fibonacci(40);\n    println!(\"Fibonacci(40) computed in sub-microsecond: {}\", result);\n}"
   },
@@ -392,7 +392,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 6: Systems Internals",
     "title": "Macros: Declarative vs Procedural Macros",
     "desc": "JavaScript uses Babel plugins or TypeScript decorators for meta-programming. Rust provides declarative macros (`macro_rules!`) and procedural macros (derive, attribute, function-like) that manipulate Rust AST tokens at compile time.",
-    "nodeCode": "import { Entity, Column } from 'typeorm';\n\n// TypeScript Decorator\n@Entity()\nclass User { @Column() name: string; }",
+    "nodeCode": "import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';\n\n// TypeScript Decorator (requires experimentalDecorators: true)\n@Entity()\nexport class User {\n  @PrimaryGeneratedColumn()\n  id!: number;\n\n  @Column()\n  name!: string;\n}",
     "why": "Rust macros run strictly at compile time with zero runtime reflection overhead.",
     "code": "// Declarative macro for calculating operations\nmacro_rules! calculate {\n    (add $a:expr, $b:expr) => {\n        $a + $b\n    };\n    (mul $a:expr, $b:expr) => {\n        $a * $b\n    };\n}\n\nfn main() {\n    let sum = calculate!(add 10, 20);\n    let product = calculate!(mul 5, 4);\n    println!(\"Macro results: sum={}, product={}\", sum, product);\n}"
   },

@@ -52,7 +52,7 @@ async fn main() -> Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     let app = Router::new()
         .route("/healthz", get(routes::health::check))
         .route("/api/users", post(routes::users::create_user))
-        .route("/api/users/{id}", get(routes::users::get_user))
+        .route("/api/users/:id", get(routes::users::get_user))
         .layer(TraceLayer::new_for_http())
         .with_state(state.clone());
 

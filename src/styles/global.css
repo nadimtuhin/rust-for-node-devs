@@ -837,20 +837,25 @@ header {
 }
 .clear-search-btn {
   position: absolute;
-  right: 0.4rem;
+  right: 0.2rem;
   background: transparent;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 0.75rem;
-  padding: 0.2rem;
+  font-size: 0.85rem;
+  padding: 0;
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .clear-search-btn:hover {
   color: var(--text);
 }
 .clear-search-btn:focus-visible {
   outline: 2px solid var(--go-blue);
-  outline-offset: 1px;
+  outline-offset: -2px;
 }
 
 .sidebar-part-label {
@@ -866,6 +871,11 @@ header {
 }
 
 .chapter-nav-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
   padding: 0.55rem 1rem;
   display: flex;
   align-items: center;

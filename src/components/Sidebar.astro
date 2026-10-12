@@ -41,18 +41,17 @@ const groupedParts = chaptersList.reduce((acc, [key, ch]) => {
     <div class="sidebar-part-group">
       <div class="sidebar-part-label">{partName}</div>
       {items.map((item) => (
-        <div 
+        <button 
+          type="button"
           class={`chapter-nav-item ${currentKey === item.key ? 'active' : ''}`}
-          role="button" 
-          tabindex="0" 
           aria-current={currentKey === item.key ? 'true' : undefined}
           aria-label={`Select lesson ${item.title}`} 
           data-id={item.key} 
-          onclick={`selectChapter('${item.key}')`} onkeydown={`if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectChapter('${item.key}'); }`}
+          onclick={`selectChapter('${item.key}')`}
         >
           <span class="chapter-num">{item.num}</span>
           <span>{item.title}</span>
-        </div>
+        </button>
       ))}
     </div>
   ))}

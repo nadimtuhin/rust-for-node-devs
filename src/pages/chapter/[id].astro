@@ -131,8 +131,8 @@ const chapter = chaptersData[id] || chaptersData['basic_vars'];
       // Hide empty part headers
       document.querySelectorAll('.sidebar-part-group').forEach(group => {
         const hasVisible = Array.from(group.querySelectorAll('.chapter-nav-item'))
-          .some(item => (item as HTMLElement).style.display !== 'none');
-        (group as HTMLElement).style.display = hasVisible ? 'block' : 'none';
+          .some(item => item.style.display !== 'none');
+        group.style.display = hasVisible ? 'block' : 'none';
       });
 
       const notice = document.getElementById('noResultsNotice');
@@ -334,7 +334,7 @@ const chapter = chaptersData[id] || chaptersData['basic_vars'];
         e.preventDefault();
         const input = document.getElementById('lessonSearchInput');
         if (input) {
-          if (window.innerWidth <= 860) toggleSidebar(true);
+          if (window.innerWidth <= 1024) toggleSidebar(true);
           input.focus();
           input.select();
         }
@@ -343,8 +343,8 @@ const chapter = chaptersData[id] || chaptersData['basic_vars'];
         const sidebar = document.getElementById('chaptersList');
         if (sidebar && sidebar.classList.contains('mobile-open')) {
           toggleSidebar(false);
-          const expandBtn = document.getElementById('sidebarExpandBtn');
-          if (expandBtn) expandBtn.focus();
+          const collapseBtn = document.getElementById('sidebarCollapseBtn');
+          if (collapseBtn) collapseBtn.focus();
         }
       }
     });

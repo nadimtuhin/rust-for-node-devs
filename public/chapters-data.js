@@ -483,7 +483,7 @@ window.chaptersData = {
     "desc": "Verify if a string is a palindrome considering only alphanumeric characters and ignoring case. Solved in Rust using two pointers over an iterator with zero heap allocations.",
     "nodeCode": "// TypeScript Valid Palindrome\nfunction isPalindrome(s: string): boolean {\n  const clean = s.toLowerCase().replace(/[^a-z0-9]/g, '');\n  return clean === clean.split('').reverse().join('');\n}",
     "why": "Two-pointer in-place traversal avoids allocating new filtered strings.",
-    "code": "fn is_palindrome(s: &str) -> bool {\n    let iter = s.chars()\n        .filter(|c| c.is_alphanumeric())\n        .flat_map(|c| c.to_lowercase());\n    iter.clone().eq(iter.rev())\n}\n\nfn main() {\n    println!(\"'A man, a plan, a canal: Panama' is palindrome? {}\", is_palindrome(\"A man, a plan, a canal: Panama\"));\n    println!(\"'race a car' is palindrome? {}\", is_palindrome(\"race a car\"));\n}"
+    "code": "fn is_palindrome(s: &str) -> bool {\n    let chars: Vec<char> = s.chars()\n        .filter(|c| c.is_alphanumeric())\n        .map(|c| c.to_ascii_lowercase())\n        .collect();\n    if chars.is_empty() {\n        return true;\n    }\n    let mut left = 0;\n    let mut right = chars.len() - 1;\n    while left < right {\n        if chars[left] != chars[right] {\n            return false;\n        }\n        left += 1;\n        right -= 1;\n    }\n    true\n}\n\nfn main() {\n    println!(\"'A man, a plan, a canal: Panama' is palindrome? {}\", is_palindrome(\"A man, a plan, a canal: Panama\"));\n    println!(\"'race a car' is palindrome? {}\", is_palindrome(\"race a car\"));\n}"
   },
   "lc_reverse_linked_list": {
     "num": "LC206",
@@ -501,6 +501,6 @@ window.chaptersData = {
     "desc": "Given an integer array `nums`, find the subarray with the largest sum and return its sum. Kadane's dynamic programming algorithm executes in O(n) time and O(1) space.",
     "nodeCode": "// TypeScript Kadane's Algorithm\nfunction maxSubArray(nums: number[]): number {\n  let maxSoFar = nums[0], currMax = nums[0];\n  for (let i = 1; i < nums.length; i++) {\n    currMax = Math.max(nums[i], currMax + nums[i]);\n    maxSoFar = Math.max(maxSoFar, currMax);\n  }\n  return maxSoFar;\n}",
     "why": "Kadane's algorithm executes in a single pass with O(1) auxiliary space.",
-    "code": "use std::cmp::max;\n\nfn max_sub_array(nums: Vec<i32>) -> i32 {\n    let mut max_so_far = nums[0];\n    let mut current_max = nums[0];\n\n    for &num in nums.iter().skip(1) {\n        current_max = max(num, current_max + num);\n        max_so_far = max(max_so_far, current_max);\n    }\n\n    max_so_far\n}\n\nfn main() {\n    let nums = vec![-2, 1, -3, 4, -1, 2, 1, -5, 4];\n    println!(\"Maximum subarray sum: {}\", max_sub_array(nums));\n}"
+    "code": "use std::cmp::max;\n\nfn max_sub_array(nums: Vec<i32>) -> i32 {\n    if nums.is_empty() {\n        return 0;\n    }\n    let mut max_so_far = nums[0];\n    let mut current_max = nums[0];\n\n    for &num in nums.iter().skip(1) {\n        current_max = max(num, current_max + num);\n        max_so_far = max(max_so_far, current_max);\n    }\n\n    max_so_far\n}\n\nfn main() {\n    let nums = vec![-2, 1, -3, 4, -1, 2, 1, -5, 4];\n    println!(\"Maximum subarray sum: {}\", max_sub_array(nums));\n}"
   }
 };

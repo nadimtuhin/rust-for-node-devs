@@ -68,7 +68,7 @@ async fn main() -> Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 
     // 6. Explicit pool draining: close connections and wait for in-flight DB queries
     tracing::info!("Draining PostgreSQL connection pool...");
-    state.db.close().await;
+    state.db.close();
     tracing::info!("PostgreSQL pool closed. Server shutdown complete.");
 
     Ok(())

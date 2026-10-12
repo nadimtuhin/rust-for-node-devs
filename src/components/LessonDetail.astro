@@ -22,34 +22,10 @@ const nextTitle = hasNext ? chaptersData[keys[currentIndex + 1]].title : '';
 <article class="lesson-detail-panel gitbook-article-intro" id="detailPanel" aria-labelledby="detailTitle">
   <div class="detail-badge-row gitbook-breadcrumb">
     <div style="display: flex; align-items: center; gap: 0.6rem;">
-      <button id="sidebarExpandBtn" class="sidebar-expand-btn" onclick="toggleSidebar()" aria-label="Toggle Table of Contents sidebar" title="Toggle Table of Contents">☰ TOC</button>
+      <button id="sidebarExpandBtn" class="sidebar-expand-btn" onclick="toggleSidebar()" aria-label="Toggle Table of Contents sidebar" title="Toggle Table of Contents">Menu</button>
       <span class="part-tag" id="detailPartTag">{chapter.part}</span>
     </div>
-    <div class="gitbook-top-nav-group">
-      <nav class="gitbook-top-pager" aria-label="Top chapter navigation">
-        <button 
-          id="btnTopPrevLesson" 
-          class={`gitbook-top-btn prev ${!hasPrev ? 'disabled' : ''}`} 
-          onclick="navigateLesson(-1)" 
-          aria-label="Navigate to previous chapter" 
-          title={hasPrev ? `Previous: ${prevTitle}` : undefined}
-          disabled={!hasPrev}
-        >
-          <span aria-hidden="true">←</span> Prev
-        </button>
-        <button 
-          id="btnTopNextLesson" 
-          class={`gitbook-top-btn next ${!hasNext ? 'disabled' : ''}`} 
-          onclick="navigateLesson(1)" 
-          aria-label="Navigate to next chapter" 
-          title={hasNext ? `Next: ${nextTitle}` : undefined}
-          disabled={!hasNext}
-        >
-          Next <span aria-hidden="true">→</span>
-        </button>
-      </nav>
-      <span class="gitbook-chapter-id" id="detailId">#{chapter.num}</span>
-    </div>
+    <span class="gitbook-chapter-id" id="detailId">#{chapter.num}</span>
   </div>
 
   <h1 class="lesson-title gitbook-title" id="detailTitle">{chapter.title}</h1>
@@ -57,19 +33,19 @@ const nextTitle = hasNext ? chaptersData[keys[currentIndex + 1]].title : '';
     {chapter.desc}
   </p>
 
-  <div class="card-box node-box gitbook-comparison-box" role="region" aria-label="Node.js Code Comparison">
+  <div class="node-box-wrap gitbook-code-comparison" role="region" aria-label="Node.js Code Comparison">
     <div class="node-header-row">
       <div style="display: flex; align-items: center; gap: 0.5rem;">
-        <span class="node-tag">🟢 Node.js / TS Equivalent</span>
-        <span class="node-file-tag">📄 index.js</span>
+        <span class="node-lang-pill">Node.js / TypeScript Equivalent</span>
+        <span class="node-file-tag">index.ts</span>
       </div>
-      <button id="copyNodeBtn" class="copy-snippet-btn" onclick="copyNodeSnippet()" aria-label="Copy Node.js snippet to clipboard">📋 Copy</button>
+      <button id="copyNodeBtn" class="copy-snippet-btn" onclick="copyNodeSnippet()" aria-label="Copy Node.js snippet to clipboard">Copy</button>
     </div>
     <pre class="node-code" id="detailNodeCode" tabindex="0" role="region" aria-label="Node.js code example"><code set:html={highlightedNodeCode}></code></pre>
   </div>
 
-  <div class="card-box rust-why-box gitbook-callout-box" role="region" aria-label="Rust Mental Model Rationale" style="border-left-color: #b7410e;">
-    <div class="rust-why-title" style="color: #b7410e;"><span aria-hidden="true">🦀</span> The Rust Mental Model</div>
+  <div class="rust-why-box gitbook-callout-box" role="region" aria-label="Rust Mental Model Rationale">
+    <div class="rust-why-title">The Rust Mental Model</div>
     <p class="rust-why-desc" id="detailRustWhy">
       {chapter.why}
     </p>
@@ -78,15 +54,15 @@ const nextTitle = hasNext ? chaptersData[keys[currentIndex + 1]].title : '';
   <!-- Deep Architecture Breakdown -->
   <section class="chapter-insight-section" aria-label="Architectural Paradigm Comparison">
     <div class="insight-card">
-      <h2 class="insight-heading">🦀 Rust Systems Deep Dive</h2>
+      <h2 class="insight-heading">Systems Deep Dive</h2>
       <dl class="insight-definition-list">
-        <dt class="insight-term" style="color: #0369a1;">Pro Tip</dt>
+        <dt class="insight-term pro-tip">Pro Tip</dt>
         <dd class="insight-desc" id="detailInsightProTip">{insight.proTip}</dd>
         
-        <dt class="insight-term" style="color: #dc2626;">Footgun</dt>
+        <dt class="insight-term footgun">Footgun</dt>
         <dd class="insight-desc" id="detailInsightFootgun">{insight.footgun}</dd>
 
-        <dt class="insight-term" style="color: #b7410e;">Arch Note</dt>
+        <dt class="insight-term arch-note">Arch Note</dt>
         <dd class="insight-desc" id="detailInsightArchNote">{insight.archNote}</dd>
       </dl>
     </div>
@@ -101,22 +77,21 @@ const nextTitle = hasNext ? chaptersData[keys[currentIndex + 1]].title : '';
   .insight-card {
     background: #ffffff;
     border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border-radius: var(--radius-md);
     padding: 1.25rem 1.5rem;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
   }
 
   .insight-heading {
-    font-size: 1.125rem;
+    font-size: 1rem;
     font-weight: 700;
-    color: #0f172a;
+    color: var(--text);
     margin: 0 0 1rem;
     letter-spacing: -0.01em;
   }
 
   .insight-definition-list {
     display: grid;
-    grid-template-columns: 140px 1fr;
+    grid-template-columns: 110px 1fr;
     gap: 0.75rem 1rem;
     margin: 0;
     align-items: baseline;
@@ -130,16 +105,28 @@ const nextTitle = hasNext ? chaptersData[keys[currentIndex + 1]].title : '';
   }
 
   .insight-term {
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
+  .insight-term.pro-tip {
+    color: #0284c7;
+  }
+
+  .insight-term.footgun {
+    color: #dc2626;
+  }
+
+  .insight-term.arch-note {
+    color: var(--rust-primary);
+  }
+
   .insight-desc {
     margin: 0;
-    font-size: 0.9375rem;
-    line-height: 1.55;
-    color: #334155;
+    font-size: 0.875rem;
+    line-height: 1.6;
+    color: var(--text-body);
   }
 </style>

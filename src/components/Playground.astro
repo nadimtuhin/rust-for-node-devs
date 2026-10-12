@@ -8,29 +8,16 @@ import { chaptersData } from '../data/chapters';
 const chapter = chaptersData[chapterKey] || chaptersData['basic_vars'];
 ---
 <div class="playground-column gitbook-sandbox" id="playgroundSection" role="region" aria-label="Interactive Rust Code Playground">
-  <div class="gitbook-sandbox-header">
-    <div class="gitbook-sandbox-title">
-      <span>⚡ Interactive Rust Playground</span>
-      <span class="gitbook-sandbox-hint">Live compiler via play.rust-lang.org (rustc stable)</span>
-    </div>
-  </div>
-
   <div class="editor-toolbar" role="toolbar" aria-label="Code Editor Toolbar">
     <div class="editor-tab-group">
-      <div class="macos-dots" aria-hidden="true">
-        <span class="macos-dot dot-red"></span>
-        <span class="macos-dot dot-yellow"></span>
-        <span class="macos-dot dot-green"></span>
-      </div>
-      <div class="editor-tab" id="editorCurrentFile" aria-label={`Active file: main.rs — ${chapter.title}`}>📄 main.rs — {chapter.title}</div>
+      <div class="editor-tab" id="editorCurrentFile" aria-label={`Active file: main.rs — ${chapter.title}`}>main.rs</div>
     </div>
     <div class="editor-actions">
-      <button id="copyBtn" class="tool-btn" onclick="copyEditorCode()" aria-label="Copy Rust code to clipboard">📋 Copy</button>
-      <button id="resetBtn" class="tool-btn" onclick="resetEditorCode()" aria-label="Reset Rust code to chapter default">↺ Reset</button>
+      <button id="copyBtn" class="tool-btn" onclick="copyEditorCode()" aria-label="Copy Rust code to clipboard">Copy</button>
+      <button id="resetBtn" class="tool-btn" onclick="resetEditorCode()" aria-label="Reset Rust code to chapter default">Reset</button>
       <button id="runBtn" class="btn-run" onclick="executeRustCode()" aria-label="Compile and run Rust code (Keyboard shortcut: Command + Enter)">
-        <span aria-hidden="true">▶</span>
-        <span>Run Code</span>
-        <span style="font-size:0.7rem; opacity:0.85; font-weight:normal;" aria-hidden="true">(⌘+⏎)</span>
+        <span>Run</span>
+        <span class="btn-shortcut" aria-hidden="true">⌘⏎</span>
       </button>
     </div>
   </div>
@@ -41,15 +28,15 @@ const chapter = chaptersData[chapterKey] || chaptersData['basic_vars'];
 
   <div class="console-panel" role="region" aria-label="Terminal Execution Output">
     <div class="console-header">
-      <span>Terminal Output (play.rust-lang.org)</span>
+      <span class="console-title">Output</span>
       <div class="console-status-group">
         <span class="status-dot" id="statusDot" aria-hidden="true"></span>
         <span id="statusLatency" style="font-size:0.7rem; color:var(--console-muted); font-family:var(--font-mono, monospace);" aria-label="Execution time"></span>
         <span id="statusTag" class="status-pill ready" role="status" aria-label="Execution status">Ready</span>
-        <button class="copy-snippet-btn" onclick="clearConsole()" aria-label="Clear terminal output">✕ Clear</button>
-        <button class="copy-snippet-btn" onclick="copyConsoleOutput()" aria-label="Copy terminal output to clipboard">📋 Copy</button>
+        <button class="copy-snippet-btn" onclick="clearConsole()" aria-label="Clear terminal output">Clear</button>
+        <button class="copy-snippet-btn" onclick="copyConsoleOutput()" aria-label="Copy terminal output to clipboard">Copy</button>
       </div>
     </div>
-    <div id="consoleArea" class="console-body" role="status" aria-live="polite" aria-atomic="true">// Hit "Run Code" (or ⌘+Enter) to compile and execute on Rust Playground!</div>
+    <div id="consoleArea" class="console-body" role="status" aria-live="polite" aria-atomic="true">// Hit "Run" (or ⌘+Enter) to compile and execute on Rust Playground</div>
   </div>
 </div>

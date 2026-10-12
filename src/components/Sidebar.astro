@@ -21,11 +21,8 @@ const groupedParts = chaptersList.reduce((acc, [key, ch]) => {
 <nav class="chapters-sidebar" id="chaptersList">
   <div class="sidebar-header-box">
     <div class="sidebar-title-row">
-      <div style="display: flex; align-items: center; gap: 0.4rem;">
-        <span class="sidebar-title">📖 Table of Contents</span>
-        <span class="sidebar-badge-count" id="sidebarCountBadge" aria-live="polite" aria-atomic="true">56 Chapters</span>
-      </div>
-      <button id="sidebarCollapseBtn" class="sidebar-collapse-btn" onclick="toggleSidebar()" aria-label="Collapse Table of Contents sidebar" title="Collapse sidebar">◀</button>
+      <span class="sidebar-title">Table of Contents</span>
+      <span class="sidebar-badge-count" id="sidebarCountBadge" aria-live="polite" aria-atomic="true">56 Chapters</span>
     </div>
     <div class="sidebar-search-box" role="search">
       <input type="search" id="lessonSearchInput" aria-label="Search lessons by title or keyword" placeholder="Filter 56 chapters... (⌘+K)" oninput="filterLessons(this.value)">
@@ -50,15 +47,15 @@ const groupedParts = chaptersList.reduce((acc, [key, ch]) => {
           onclick={`selectChapter('${item.key}')`}
         >
           <span class="chapter-num">{item.num}</span>
-          <span>{item.title}</span>
+          <span class="chapter-nav-title">{item.title}</span>
         </button>
       ))}
     </div>
   ))}
 
-  <div class="sidebar-appendices-footer" style="padding: 1rem; border-top: 1px solid var(--border);">
-    <a href="/chapters" class="sidebar-appendices-link" style="color: #b7410e; font-weight: 700; text-decoration: none; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
-      <span>📚 Book Index & Appendices (14)</span>
+  <div class="sidebar-appendices-footer">
+    <a href="/chapters" class="sidebar-appendices-link">
+      <span>All 56 Chapters & Appendices</span>
       <span aria-hidden="true">→</span>
     </a>
   </div>

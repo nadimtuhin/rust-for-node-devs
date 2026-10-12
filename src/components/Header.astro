@@ -26,19 +26,17 @@ const currentGuide = guideLinks.find(g => pathname === g.href);
 
 <header role="banner">
   <a href="/" class="brand" aria-label="Rust for Node.js Developers Book Home">
-    <span aria-hidden="true">📖 ➔ 🦀</span>
-    <span>Rust for Node.js Developers</span>
-    <span class="badge" aria-label="Interactive Book with 56 Chapters">The Book • 56 Chapters</span>
+    <span class="brand-title">Rust for Node Devs</span>
   </a>
   
   <nav class="header-nav-scroll" role="navigation" aria-label="Site Navigation">
-    <a href="/" class={`tab-toggle ${isStudio ? 'active' : ''}`} aria-current={isStudio ? 'page' : undefined}>⚡ Studio</a>
-    <a href="/chapters" class={`tab-toggle ${isChapters ? 'active' : ''}`} aria-current={isChapters ? 'page' : undefined}>📚 Chapters</a>
-    <a href="/roadmap" class={`tab-toggle ${pathname === '/roadmap' ? 'active' : ''}`} aria-current={pathname === '/roadmap' ? 'page' : undefined}>🧭 Roadmap</a>
+    <a href="/" class={`tab-toggle ${isStudio ? 'active' : ''}`} aria-current={isStudio ? 'page' : undefined}>Studio</a>
+    <a href="/chapters" class={`tab-toggle ${isChapters ? 'active' : ''}`} aria-current={isChapters ? 'page' : undefined}>Curriculum</a>
+    <a href="/roadmap" class={`tab-toggle ${pathname === '/roadmap' ? 'active' : ''}`} aria-current={pathname === '/roadmap' ? 'page' : undefined}>Roadmap</a>
 
     {currentGuide && (
       <a href={currentGuide.href} class="tab-toggle active" aria-current="page">
-        <span>{currentGuide.icon} {currentGuide.label}</span>
+        <span>{currentGuide.label}</span>
       </a>
     )}
 
@@ -52,7 +50,7 @@ const currentGuide = guideLinks.find(g => pathname === g.href);
         aria-controls="guidesDropdownMenu"
         aria-label="Toggle architecture guides and appendices menu"
       >
-        <span>📑 {currentGuide ? 'All Appendices' : 'Appendices'}</span>
+        <span>{currentGuide ? 'All Appendices' : 'Appendices'}</span>
         <span class="dropdown-chevron" aria-hidden="true">▾</span>
       </button>
 
@@ -65,7 +63,6 @@ const currentGuide = guideLinks.find(g => pathname === g.href);
               class={`dropdown-item ${pathname === guide.href ? 'active-dropdown-item' : ''}`}
               role="menuitem"
             >
-              <span class="guide-item-icon">{guide.icon}</span>
               <span class="guide-item-label">{guide.label}</span>
             </a>
           ))}
@@ -75,7 +72,7 @@ const currentGuide = guideLinks.find(g => pathname === g.href);
   </nav>
 
   <a href="https://github.com/nadimtuhin/rust-for-node-devs" target="_blank" rel="noopener noreferrer" class="github-link-btn" aria-label="View Rust for Node Developers repository on GitHub (opens in a new tab)">
-    <span>GitHub ★</span>
+    <span>GitHub</span>
   </a>
 </header>
 

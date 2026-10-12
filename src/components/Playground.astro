@@ -7,7 +7,7 @@ const { chapterKey = 'basic_vars' } = Astro.props;
 import { chaptersData } from '../data/chapters';
 const chapter = chaptersData[chapterKey] || chaptersData['basic_vars'];
 ---
-<div class="playground-column gitbook-sandbox" id="playgroundSection" role="region" aria-label="Interactive Rust Code Playground">
+<div class="playground-column" id="playgroundSection" role="region" aria-label="Interactive Rust Code Playground">
   <div class="editor-toolbar" role="toolbar" aria-label="Code Editor Toolbar">
     <div class="editor-tab-group">
       <div class="editor-tab" id="editorCurrentFile" aria-label={`Active file: main.rs — ${chapter.title}`}>main.rs</div>

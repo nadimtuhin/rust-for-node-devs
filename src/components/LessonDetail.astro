@@ -19,17 +19,17 @@ const hasNext = currentIndex !== -1 && currentIndex < keys.length - 1;
 const prevTitle = hasPrev ? chaptersData[keys[currentIndex - 1]].title : '';
 const nextTitle = hasNext ? chaptersData[keys[currentIndex + 1]].title : '';
 ---
-<article class="lesson-detail-panel gitbook-article-intro" id="detailPanel" aria-labelledby="detailTitle">
+<article class="lesson-detail-panel" id="detailPanel" aria-labelledby="detailTitle">
   <div class="detail-badge-row gitbook-breadcrumb">
-    <div style="display: flex; align-items: center; gap: 0.6rem;">
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
       <button id="sidebarExpandBtn" class="sidebar-expand-btn" onclick="toggleSidebar()" aria-label="Toggle Table of Contents sidebar" title="Toggle Table of Contents">Menu</button>
       <span class="part-tag" id="detailPartTag">{chapter.part}</span>
     </div>
     <span class="gitbook-chapter-id" id="detailId">#{chapter.num}</span>
   </div>
 
-  <h1 class="lesson-title gitbook-title" id="detailTitle">{chapter.title}</h1>
-  <p class="lesson-desc gitbook-desc" id="detailDesc">
+  <h1 class="lesson-title" id="detailTitle">{chapter.title}</h1>
+  <p class="lesson-desc" id="detailDesc">
     {chapter.desc}
   </p>
 
@@ -44,7 +44,7 @@ const nextTitle = hasNext ? chaptersData[keys[currentIndex + 1]].title : '';
     <pre class="node-code" id="detailNodeCode" tabindex="0" role="region" aria-label="Node.js code example"><code set:html={highlightedNodeCode}></code></pre>
   </div>
 
-  <div class="rust-why-box gitbook-callout-box" role="region" aria-label="Rust Mental Model Rationale">
+  <div class="rust-why-box" role="region" aria-label="Rust Mental Model Rationale">
     <div class="rust-why-title">The Rust Mental Model</div>
     <p class="rust-why-desc" id="detailRustWhy">
       {chapter.why}
@@ -71,28 +71,28 @@ const nextTitle = hasNext ? chaptersData[keys[currentIndex + 1]].title : '';
 
 <style>
   .chapter-insight-section {
-    margin-top: 1.5rem;
+    margin-top: 0.25rem;
   }
 
   .insight-card {
     background: #ffffff;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    padding: 1.25rem 1.5rem;
+    padding: 1.125rem 1.25rem;
   }
 
   .insight-heading {
-    font-size: 1rem;
+    font-size: 0.9375rem;
     font-weight: 700;
     color: var(--text);
-    margin: 0 0 1rem;
-    letter-spacing: -0.01em;
+    margin: 0 0 0.875rem;
+    letter-spacing: -0.015em;
   }
 
   .insight-definition-list {
     display: grid;
-    grid-template-columns: 110px 1fr;
-    gap: 0.75rem 1rem;
+    grid-template-columns: 88px 1fr;
+    gap: 0.625rem 0.875rem;
     margin: 0;
     align-items: baseline;
   }
@@ -105,7 +105,7 @@ const nextTitle = hasNext ? chaptersData[keys[currentIndex + 1]].title : '';
   }
 
   .insight-term {
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -125,8 +125,8 @@ const nextTitle = hasNext ? chaptersData[keys[currentIndex + 1]].title : '';
 
   .insight-desc {
     margin: 0;
-    font-size: 0.875rem;
-    line-height: 1.6;
+    font-size: 0.84rem;
+    line-height: 1.62;
     color: var(--text-body);
   }
 </style>

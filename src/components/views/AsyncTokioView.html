@@ -103,14 +103,18 @@ async fn process_large_dataset(chunks: Vec&lt;Chunk&gt;) {
     </table>
 
     <div style="margin-top: 1.25rem;">
-      <h4 style="margin: 0 0 0.5rem; font-size: 1rem; color: #0f172a;">Idiomatic Workaround for Unsafe Operations in <code>select!</code>:</h4>
-      <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">Keep the future pinned across iterations or use a loop over <code>AsyncReadExt::read</code> rather than <code>read_exact</code>:</p>
-      <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 6px; font-size: 0.85rem; font-family: monospace;"><code>// Pin the operation OUTSIDE the select loop to prevent dropping progress:
-let mut write_fut = Box::pin(writer.write_all(&amp;payload));
+      <h4 style="margin: 0 0 0.5rem; font-size: 1rem; color: #0f172a;">Idiomatic Handling for Non-Cancellation-Safe Operations:</h4>
+      <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">For operations like <code>write_all</code>, aborting drops byte stream offsets. Delegate stream writes to a dedicated spawned task with a channel, or track slice offsets explicitly:</p>
+      <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 6px; font-size: 0.85rem; font-family: monospace;"><code>// Pattern A: Delegate stream write to spawned task and coordinate via channel / CancellationToken
+let (tx, rx) = tokio::sync::oneshot::channel();
+tokio::spawn(async move {
+    let res = writer.write_all(&amp;payload).await;
+    let _ = tx.send(res);
+});
 
 tokio::select! {
-    res = &amp;mut write_fut =&gt; { /* handle completion */ }
-    _ = cancel_rx.changed() =&gt; { /* handle abort safely without dropping partial state */ }
+    res = rx =&gt; { /* write completed without partial cancellation loss */ }
+    _ = cancel_token.cancelled() =&gt; { /* cancel safely without corrupting socket buffer */ }
 }</code></pre>
     </div>
   </div>

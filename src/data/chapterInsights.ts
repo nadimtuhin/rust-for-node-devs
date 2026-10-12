@@ -111,7 +111,7 @@ export const chapterInsights: Record<string, ChapterInsight> = {
     "archNote": "Unlike Java or C# where locks are separate monitors, Rust locks wrap the protected data directly."
   },
   "memory_alignment": {
-    "proTip": "Place largest alignment fields first (u64/u128) followed by smaller fields to minimize padding bytes.",
+    "proTip": "Under `#[repr(C)]`, place largest alignment fields first (u64/u128) followed by smaller fields to eliminate padding bytes. In default `#[repr(Rust)]`, rustc reorders fields automatically.",
     "footgun": "By default, Rust compiler optimizes field layout under `repr(Rust)`. Use `#[repr(C)]` for FFI boundaries.",
     "archNote": "Keeping structs within a 64-byte CPU cache line prevents expensive extra memory bus fetch cycles."
   },

@@ -17,7 +17,7 @@
 │   ├── routes/
 │   │   ├── mod.rs         # Router aggregation & layer attachments
 │   │   ├── health.rs      # GET /healthz
-│   │   └── users.rs       # POST /api/users, GET /api/users/:id?page=&limit=
+│   │   └── users.rs       # POST /api/users, GET /api/users/{id}?page=&limit=
 │   └── models/
 │       └── user.rs        # Serde models & SQLx queries
 └── tests/
@@ -52,7 +52,7 @@ async fn main() -> Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     let app = Router::new()
         .route("/healthz", get(routes::health::check))
         .route("/api/users", post(routes::users::create_user))
-        .route("/api/users/:id", get(routes::users::get_user))
+        .route("/api/users/{id}", get(routes::users::get_user))
         .layer(TraceLayer::new_for_http())
         .with_state(state.clone());
 
@@ -187,19 +187,20 @@ pub async fn create_user(
     Ok((StatusCode::CREATED, Json(user)))
 }
 
-// GET /api/users/:id?page=1&limit=20
+// GET /api/users/{id}?page=1&limit=20
 // Demonstrates Path, Query, and State all implementing FromRequestParts
 pub async fn get_user(
     Path(id): Path&lt;Uuid&gt;,
     Query(pagination): Query&lt;PaginationQuery&gt;,
     State(db): State&lt;Pool&lt;Postgres&gt;&gt;,
 ) -> Result&lt;Json&lt;UserResponse&gt;, AppError&gt; {
+    let offset = (pagination.page.saturating_sub(1) as i64) * (pagination.limit as i64);
     let user = sqlx::query_as::&lt;_, UserResponse&gt;(
         "SELECT id, email FROM users WHERE id = $1 LIMIT $2 OFFSET $3"
     )
     .bind(id)
     .bind(pagination.limit as i64)
-    .bind(((pagination.page - 1) * pagination.limit) as i64)
+    .bind(offset)
     .fetch_optional(&db)
     .await?
     .ok_or(AppError::NotFound("User not found".into()))?;

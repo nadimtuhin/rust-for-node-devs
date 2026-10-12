@@ -63,15 +63,15 @@ pub async fn chat_stream_handler(
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code>use rig::{
     completion::Prompt,
     providers::openai::{Client, GPT_4O},
-    tool::Tool,
+    tool::{Tool, ToolDefinition},
 };
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, JsonSchema)]
 struct CalcArgs { 
     a: f64, 
-    b: f64 
+    b: f64,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -83,19 +83,12 @@ impl Tool for CalcTool {
     type Args = CalcArgs;
     type Output = f64;
 
-    fn description(&self) -> String {
-        "Calculates the sum of two numbers".to_string()
-    }
-
-    fn parameters(&self) -> serde_json::Value {
-        json!({
-            "type": "object",
-            "properties": {
-                "a": { "type": "number", "description": "First operand" },
-                "b": { "type": "number", "description": "Second operand" }
-            },
-            "required": ["a", "b"]
-        })
+    async fn definition(&self, _prompt: String) -> ToolDefinition {
+        ToolDefinition {
+            name: Self::NAME.to_string(),
+            description: "Calculates the sum of two numbers".to_string(),
+            parameters: schemars::schema_for!(CalcArgs),
+        }
     }
 
     async fn call(&self, args: Self::Args) -> Result&lt;Self::Output, Self::Error&gt; {
@@ -141,11 +134,16 @@ pub fn sample_next_token(
     logits: &Tensor, 
     logits_processor: &mut LogitsProcessor
 ) -> Result&lt;u32, candle_core::Error&gt; {
-    // Expected logits shape: [batch_size, seq_len, vocab_size]
-    let seq_len = logits.dim(1)?;
-    
-    // Extract last sequence position logits using Candle's IndexOp: [batch=0, seq_len - 1, :]
-    let next_token_logits = logits.i((0, seq_len - 1, ..))?;
+    // Support both 3D [batch, seq_len, vocab_size] and 2D [batch, vocab_size] tensor outputs
+    let next_token_logits = if logits.dims().len() == 3 {
+        let seq_len = logits.dim(1)?;
+        logits.i((0, seq_len - 1, ..))?
+    } else if logits.dims().len() == 2 {
+        logits.i((0, ..))?
+    } else {
+        logits.clone()
+    };
+    let next_token_logits = next_token_logits.squeeze(0).unwrap_or(next_token_logits);
 
     // Sample next token ID via temperature & top-p/top-k logic
     let next_token_id = logits_processor.sample(&next_token_logits)?;

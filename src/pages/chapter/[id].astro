@@ -76,10 +76,12 @@ const chapter = chaptersData[id] || chaptersData['basic_vars'];
         "Cmd-Enter": function() { executeRustCode(); },
         "Ctrl-Enter": function() { executeRustCode(); },
         "Cmd-K": function() {
+          if (window.innerWidth <= 1024) toggleSidebar(true);
           const input = document.getElementById('lessonSearchInput');
           if (input) { input.focus(); input.select(); }
         },
         "Ctrl-K": function() {
+          if (window.innerWidth <= 1024) toggleSidebar(true);
           const input = document.getElementById('lessonSearchInput');
           if (input) { input.focus(); input.select(); }
         }
@@ -202,11 +204,13 @@ const chapter = chaptersData[id] || chaptersData['basic_vars'];
       if (!text) return '';
       return text
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/\x1b\[31(?:;1)?m/g, '<span style="color:#f87171;font-weight:bold;">')
-        .replace(/\x1b\[33(?:;1)?m/g, '<span style="color:#fbbf24;font-weight:bold;">')
-        .replace(/\x1b\[32(?:;1)?m/g, '<span style="color:#4ade80;font-weight:bold;">')
-        .replace(/\x1b\[36(?:;1)?m/g, '<span style="color:#38bdf8;font-weight:bold;">')
+        .replace(/\x1b\[(?:1;31|31(?:;1)?|91)m/g, '<span style="color:#f87171;font-weight:bold;">')
+        .replace(/\x1b\[(?:1;33|33(?:;1)?|93)m/g, '<span style="color:#fbbf24;font-weight:bold;">')
+        .replace(/\x1b\[(?:1;32|32(?:;1)?|92)m/g, '<span style="color:#4ade80;font-weight:bold;">')
+        .replace(/\x1b\[(?:1;36|36(?:;1)?|96)m/g, '<span style="color:#38bdf8;font-weight:bold;">')
+        .replace(/\x1b\[(?:1;34|34(?:;1)?|94)m/g, '<span style="color:#60a5fa;font-weight:bold;">')
         .replace(/\x1b\[1m/g, '<span style="font-weight:bold;color:#f8fafc;">')
+        .replace(/\x1b\[4m/g, '<span style="text-decoration:underline;">')
         .replace(/\x1b\[0m/g, '</span>')
         .replace(/\x1b\[[0-9;]*m/g, '');
     }

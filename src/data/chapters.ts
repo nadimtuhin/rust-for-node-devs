@@ -34,7 +34,7 @@ export const chaptersData: Record<string, Chapter> = {
     "desc": "Instead of transferring ownership, you can borrow access. Rust enforces the core law: you can have either any number of immutable references (&T) OR exactly one mutable reference (&mut T), never both simultaneously!",
     "nodeCode": "// Node.js allows unlimited shared mutable references\nconst cache = new Map();\nfunction a(c) { c.set('k', 1); }\nfunction b(c) { c.set('k', 2); }\na(cache); b(cache);",
     "why": "Aliasing XOR Mutability makes data races impossible at compile time without needing locks for read-only access.",
-    "code": "fn calculate_len(s: &String) -> usize {\n    s.len()\n}\n\nfn append_suffix(s: &mut String) {\n    s.push_str(\" [PROCESSED]\");\n}\n\nfn main() {\n    let mut message = String::from(\"Node.js to Rust\");\n    let len = calculate_len(&message);\n    println!(\"Original length: {}\", len);\n\n    append_suffix(&mut message);\n    println!(\"After mutation: {}\", message);\n}"
+    "code": "fn calculate_len(s: &str) -> usize {\n    s.len()\n}\n\nfn append_suffix(s: &mut String) {\n    s.push_str(\" [PROCESSED]\");\n}\n\nfn main() {\n    let mut message = String::from(\"Node.js to Rust\");\n    let len = calculate_len(&message);\n    println!(\"Original length: {}\", len);\n\n    append_suffix(&mut message);\n    println!(\"After mutation: {}\", message);\n}"
   },
   "basic_structs": {
     "num": "B4",
@@ -203,7 +203,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 2: Collections & Data",
     "title": "Struct Memory Layout, Alignment & Padding",
     "desc": "In V8, JavaScript objects are hidden-class shapes with pointer overhead. In Rust, structs are laid out contiguously in memory with hardware-level byte alignment and padding.",
-    "nodeCode": "// V8 hides memory layout, object headers, and pointer tags\nconst point = { x: 10, y: 20 };",
+    "nodeCode": "// In Node.js, Buffer / ArrayBuffer allows inspecting binary memory layout\nconst buffer = new ArrayBuffer(24);\nconst view = new DataView(buffer);\n// Unaligned 8-byte float write across byte offset 1\nview.setFloat64(1, 3.14159, true);\nconsole.log({ byteLength: buffer.byteLength });",
     "why": "Understanding struct alignment enables cache-line optimization and zero-waste memory footprints.",
     "code": "use std::mem::{size_of, align_of};\n\n// Field ordering impacts padding bytes\n#[repr(C)]\nstruct Unoptimized {\n    a: u8,   // 1 byte + 7 bytes padding\n    b: u64,  // 8 bytes\n    c: u8,   // 1 byte + 7 bytes padding = 24 bytes total\n}\n\n#[repr(C)]\nstruct Optimized {\n    b: u64,  // 8 bytes\n    a: u8,   // 1 byte\n    c: u8,   // 1 byte + 6 bytes padding = 16 bytes total\n}\n\nfn main() {\n    println!(\"Unoptimized size: {} bytes, align: {}\", size_of::<Unoptimized>(), align_of::<Unoptimized>());\n    println!(\"Optimized size:   {} bytes, align: {}\", size_of::<Optimized>(), align_of::<Optimized>());\n}"
   },
@@ -338,7 +338,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 6: Systems Internals",
     "title": "SIMD Vectorization & Zero-Cost Abstractions",
     "desc": "Node.js relies on V8 JIT compiler optimizations. Rust compiles directly via LLVM to machine code, taking full advantage of auto-vectorization and AVX-512 SIMD instructions to process multiple numbers per CPU cycle.",
-    "nodeCode": "// JS loop relies on V8 JIT Turbofan optimization\nfunction sum(arr) { let s = 0; for(let i=0; i<arr.length; i++) s += arr[i]; return s; }",
+    "nodeCode": "// JS loop relies on V8 JIT Turbofan / Maglev vectorization\nconst typed = new Uint32Array(1000).fill(1);\nlet total = 0;\nfor (let i = 0; i < typed.length; i++) {\n  total += typed[i];\n}\nconsole.log({ total });",
     "why": "Auto-vectorization executes arithmetic across 4 to 16 data points simultaneously in hardware vector registers.",
     "code": "fn sum_slice(slice: &[u32]) -> u32 {\n    // LLVM recognizes this pattern and emits SIMD vector instructions\n    slice.iter().sum()\n}\n\nfn main() {\n    let numbers: Vec<u32> = (1..=1000).collect();\n    let total = sum_slice(&numbers);\n    println!(\"Total calculated with SIMD: {}\", total);\n}"
   },
@@ -347,7 +347,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 6: Systems Internals",
     "title": "NAPI-RS: Accelerating Node.js with Rust",
     "desc": "Instead of rewriting your entire Node.js backend, you can write performance-critical modules in Rust and compile them directly to native Node.js addons using `napi-rs` with zero V8 GC overhead.",
-    "nodeCode": "import { createRequire } from 'node:module';\nconst require = createRequire(import.meta.url);\n\n// Calling native Rust addon compiled with NAPI-RS\nconst { calculateHash } = require('./index.node');\nconst largeBuffer = Buffer.from('hello world');\nconst hash = calculateHash(largeBuffer);",
+    "nodeCode": "// Native ESM import of NAPI-RS compiled addon\nimport { createHash } from 'node:crypto';\nimport { calculateHash } from './index.node';\n\nconst payload = Buffer.from('high-throughput payload');\nconst rustHash = calculateHash(payload);\nconsole.log({ rustHash });",
     "why": "Native addons execute at C speed directly within Node.js processes, offloading CPU-intensive tasks from the V8 event loop.",
     "code": "// Conceptual NAPI-RS export pattern in Rust\nfn fast_fibonacci(n: u32) -> u64 {\n    match n {\n        0 => 0,\n        1 => 1,\n        _ => {\n            let mut a = 0;\n            let mut b = 1;\n            for _ in 2..=n {\n                let temp = a + b;\n                a = b;\n                b = temp;\n            }\n            b\n        }\n    }\n}\n\nfn main() {\n    let result = fast_fibonacci(40);\n    println!(\"Fibonacci(40) computed in sub-microsecond: {}\", result);\n}"
   },
@@ -356,7 +356,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 6: Systems Internals",
     "title": "Unsafe Rust: When & How to Use It",
     "desc": "By default, Rust guarantees memory safety. The `unsafe` keyword does not turn off the borrow checker; it enables five specific superpowers: dereferencing raw pointers, calling FFI, mutating statics, and implementing unsafe traits.",
-    "nodeCode": "import { Buffer } from 'node:buffer';\n\n// Allocating uninitialized memory (unsafe in Node.js)\nconst buf = Buffer.allocUnsafe(100);",
+    "nodeCode": "import { Buffer } from 'node:buffer';\n\n// Buffer.allocUnsafe skips zeroing memory (risks leaking uninitialized RAM if not zeroed)\nconst uninit = Buffer.allocUnsafe(100);\nuninit.fill(0); // Zero memory to prevent security leaks",
     "why": "Unsafe allows writing operating system drivers, lock-free data structures, and hardware interactions with strict isolation.",
     "code": "fn main() {\n    let mut num = 42;\n\n    // Creating raw pointers is safe\n    let r1 = &num as *const i32;\n    let r2 = &mut num as *mut i32;\n\n    // Dereferencing raw pointers requires unsafe block\n    unsafe {\n        println!(\"Raw pointer read: {}\", *r1);\n        *r2 = 99;\n        println!(\"Mutated via raw pointer: {}\", *r2);\n    }\n}"
   },
@@ -365,7 +365,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 6: Systems Internals",
     "title": "FFI: Calling C Libraries from Rust",
     "desc": "Node.js uses node-gyp or modern koffi. Rust natively supports C ABI calls using `extern \"C\"`, allowing seamless integration with system libraries like libssl, SQLite, or hardware SDKs.",
-    "nodeCode": "// Modern Node.js FFI using 'koffi' (replaces deprecated 'ffi-napi')\nimport koffi from 'koffi';\n\nconst libc = koffi.load('libc.so.6'); // or 'libc.dylib' on macOS\nconst puts = libc.func('int puts(const char *str)');\nputs('Hello from native C via Node.js!');",
+    "nodeCode": "// Cross-platform Node.js FFI using koffi\nimport koffi from 'koffi';\n\nconst libPath = process.platform === 'darwin' ? 'libSystem.B.dylib' : process.platform === 'win32' ? 'msvcrt.dll' : 'libc.so.6';\nconst libc = koffi.load(libPath);\nconst puts = libc.func('int puts(const char *str)');\nputs('Hello from native C via Node.js!');",
     "why": "Rust links directly to C static and dynamic libraries with zero wrapper performance penalty.",
     "code": "use std::ffi::CString;\nuse std::os::raw::c_char;\n\n// Direct C ABI foreign function declaration\nextern \"C\" {\n    fn puts(s: *const c_char) -> i32;\n}\n\n#[repr(C)]\nstruct Point {\n    x: f64,\n    y: f64,\n}\n\nfn main() {\n    let pt = Point { x: 3.0, y: 4.0 };\n    println!(\"Point coordinate struct [repr(C)]: ({}, {})\", pt.x, pt.y);\n\n    let msg = CString::new(\"--> Executed foreign C ABI libc::puts directly from Rust!\").unwrap();\n    unsafe {\n        puts(msg.as_ptr());\n    }\n}"
   },
@@ -374,7 +374,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 6: Systems Internals",
     "title": "Custom Allocators: jemalloc & mimalloc",
     "desc": "V8 handles heap allocations using its internal garbage-collected heap. Rust defaults to the system allocator (glibc malloc), but switching to `jemalloc` or `mimalloc` dramatically improves multi-threaded throughput and prevents memory fragmentation.",
-    "nodeCode": "// In Node.js, V8 heap limits are configured via CLI or NODE_OPTIONS:\n// export NODE_OPTIONS=\"--max-old-space-size=4096\"\nimport v8 from 'node:v8';\n\nconsole.log('V8 Heap Statistics:', v8.getHeapStatistics().heap_size_limit);",
+    "nodeCode": "// In Node.js, V8 heap vs ArrayBuffer external memory\nimport v8 from 'node:v8';\n\nconst heapStats = v8.getHeapStatistics();\nconsole.log({ heapLimitMB: heapStats.heap_size_limit / 1024 / 1024 });\nconsole.log('External / ArrayBuffer usage:', process.memoryUsage().external);",
     "why": "jemalloc reduces lock contention on multi-core servers, preventing performance degradation under heavy concurrency.",
     "code": "// Rust allows declaring a global allocator with a single line:\n// #[global_allocator]\n// static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;\n\nfn main() {\n    // Demonstration of high-frequency allocations\n    let mut data = Vec::new();\n    for i in 0..10_000 {\n        data.push(i);\n    }\n    println!(\"Allocated {} items with allocator\", data.len());\n}"
   },
@@ -383,7 +383,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 6: Systems Internals",
     "title": "Atomics & Hardware Memory Ordering",
     "desc": "Node.js has `Atomics` for SharedArrayBuffer across worker threads. Rust provides full hardware atomic primitives (`AtomicBool`, `AtomicUsize`) with precise memory orderings (Relaxed, Acquire, Release, SeqCst).",
-    "nodeCode": "// SharedArrayBuffer and Atomics in Node.js\nconst sab = new SharedArrayBuffer(1024);\nconst typedArray = new Int32Array(sab);\n\nAtomics.add(typedArray, 0, 1);\nconsole.log(Atomics.load(typedArray, 0));",
+    "nodeCode": "// SharedArrayBuffer and sequential consistency across Worker threads in Node.js\nconst sab = new SharedArrayBuffer(1024);\nconst i32 = new Int32Array(sab);\n\nAtomics.store(i32, 0, 42); // Sequentially consistent store\nAtomics.add(i32, 0, 1);\nconsole.log('Atomic load:', Atomics.load(i32, 0));",
     "why": "Atomic operations execute directly in CPU hardware without requiring operating system mutex locks.",
     "code": "use std::sync::atomic::{AtomicUsize, Ordering};\n\nfn main() {\n    let counter = AtomicUsize::new(0);\n\n    // Atomic fetch_add returns previous value\n    let prev = counter.fetch_add(1, Ordering::SeqCst);\n    println!(\"Previous: {}, Current: {}\", prev, counter.load(Ordering::SeqCst));\n\n    // Compare and swap (CAS) loop\n    let success = counter.compare_exchange(1, 10, Ordering::SeqCst, Ordering::Relaxed);\n    println!(\"CAS Result: {:?}, New value: {}\", success, counter.load(Ordering::SeqCst));\n}"
   },
@@ -455,7 +455,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 8: LeetCode in Rust",
     "title": "Two Sum (#1) — Zero-Allocation Map",
     "desc": "Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to target. Solved in Rust using `HashMap` in O(n) time.",
-    "nodeCode": "// JS Two Sum\nfunction twoSum(nums, target) {\n  const map = new Map();\n  for (let i = 0; i < nums.length; i++) {\n    const complement = target - nums[i];\n    if (map.has(complement)) return [map.get(complement), i];\n    map.set(nums[i], i);\n  }\n}",
+    "nodeCode": "// TypeScript Two Sum\nfunction twoSum(nums: number[], target: number): number[] {\n  const map = new Map<number, number>();\n  for (let i = 0; i < nums.length; i++) {\n    const complement = target - nums[i];\n    if (map.has(complement)) return [map.get(complement)!, i];\n    map.set(nums[i], i);\n  }\n  return [];\n}",
     "why": "Solve in O(n) time using HashMap lookup with explicit 0-based vector index returns.",
     "code": "use std::collections::HashMap;\n\nfn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {\n    let mut map: HashMap<i32, usize> = HashMap::with_capacity(nums.len());\n\n    for (i, &num) in nums.iter().enumerate() {\n        let complement = target - num;\n        if let Some(&prev_idx) = map.get(&complement) {\n            return vec![prev_idx as i32, i as i32];\n        }\n        map.insert(num, i);\n    }\n    vec![]\n}\n\nfn main() {\n    let nums = vec![2, 7, 11, 15];\n    let target = 9;\n    let result = two_sum(nums, target);\n    println!(\"Two Sum indices: {:?}\", result);\n}"
   },
@@ -464,7 +464,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 8: LeetCode in Rust",
     "title": "Valid Parentheses (#20) — Vector Stack",
     "desc": "Given a string `s` containing '(', ')', '{', '}', '[' and ']', determine if the input string is valid. Solved using `Vec<char>` as a fast LIFO stack.",
-    "nodeCode": "// JS Valid Parentheses\nfunction isValid(s) {\n  const stack = [];\n  for (const c of s) {\n    if (c === '(') stack.push(')');\n    else if (stack.pop() !== c) return false;\n  }\n  return stack.length === 0;\n}",
+    "nodeCode": "// TypeScript Valid Parentheses\nfunction isValid(s: string): boolean {\n  const stack: string[] = [];\n  for (const c of s) {\n    if (c === '(') stack.push(')');\n    else if (c === '{') stack.push('}');\n    else if (c === '[') stack.push(']');\n    else if (stack.pop() !== c) return false;\n  }\n  return stack.length === 0;\n}",
     "why": "Rust's Vec functions as a cache-efficient LIFO stack with O(1) push and pop.",
     "code": "fn is_valid(s: &str) -> bool {\n    let mut stack = Vec::new();\n\n    for ch in s.chars() {\n        match ch {\n            '(' => stack.push(')'),\n            '{' => stack.push('}'),\n            '[' => stack.push(']'),\n            ')' | '}' | ']' => {\n                if stack.pop() != Some(ch) {\n                    return false;\n                }\n            }\n            _ => {}\n        }\n    }\n    stack.is_empty()\n}\n\nfn main() {\n    println!(\"'()[]{{}}' valid? {}\", is_valid(\"()[]{}\"));\n    println!(\"'(]' valid?     {}\", is_valid(\"(]\"));\n}"
   },
@@ -473,7 +473,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 8: LeetCode in Rust",
     "title": "Merge Two Sorted Lists (#21)",
     "desc": "Merge two sorted linked lists and return it as a sorted list. In Rust, recursive or loop-based pointer manipulation is solved cleanly with Option and pattern matching.",
-    "nodeCode": "// JS Merge Lists\nfunction mergeTwoLists(l1, l2) {\n  if (!l1) return l2;\n  if (!l2) return l1;\n  if (l1.val < l2.val) { l1.next = mergeTwoLists(l1.next, l2); return l1; }\n  l2.next = mergeTwoLists(l1, l2.next); return l2;\n}",
+    "nodeCode": "interface ListNode { val: number; next: ListNode | null; }\n\n// TypeScript Merge Lists\nfunction mergeTwoLists(l1: ListNode | null, l2: ListNode | null): ListNode | null {\n  if (!l1) return l2;\n  if (!l2) return l1;\n  if (l1.val < l2.val) { l1.next = mergeTwoLists(l1.next, l2); return l1; }\n  l2.next = mergeTwoLists(l1, l2.next); return l2;\n}",
     "why": "Demonstrates recursive pattern matching over optional node links.",
     "code": "#[derive(Debug, PartialEq, Eq)]\nstruct ListNode {\n    val: i32,\n    next: Option<Box<ListNode>>,\n}\n\nfn merge_two_lists(mut l1: Option<Box<ListNode>>, mut l2: Option<Box<ListNode>>) -> Option<Box<ListNode>> {\n    let mut dummy = ListNode { val: 0, next: None };\n    let mut tail = &mut dummy.next;\n\n    while l1.is_some() && l2.is_some() {\n        if l1.as_ref().unwrap().val <= l2.as_ref().unwrap().val {\n            let next = l1.as_mut().unwrap().next.take();\n            *tail = l1;\n            l1 = next;\n        } else {\n            let next = l2.as_mut().unwrap().next.take();\n            *tail = l2;\n            l2 = next;\n        }\n        tail = &mut tail.as_mut().unwrap().next;\n    }\n    *tail = l1.or(l2);\n    dummy.next\n}\n\nfn main() {\n    let l1 = Some(Box::new(ListNode { val: 1, next: Some(Box::new(ListNode { val: 4, next: None })) }));\n    let l2 = Some(Box::new(ListNode { val: 2, next: Some(Box::new(ListNode { val: 3, next: None })) }));\n    let merged = merge_two_lists(l1, l2);\n    println!(\"Merged ListNode linked lists: {:?}\", merged);\n}"
   },
@@ -482,7 +482,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 8: LeetCode in Rust",
     "title": "Best Time to Buy & Sell Stock (#121)",
     "desc": "Find maximum profit from buying and selling a stock once. Single-pass greedy algorithm tracking minimum price seen so far in O(n) time and O(1) space.",
-    "nodeCode": "// JS Stock Profit\nfunction maxProfit(prices) {\n  let minPrice = Infinity, maxProfit = 0;\n  for (const p of prices) {\n    minPrice = Math.min(minPrice, p);\n    maxProfit = Math.max(maxProfit, p - minPrice);\n  }\n  return maxProfit;\n}",
+    "nodeCode": "// TypeScript Stock Profit\nfunction maxProfit(prices: number[]): number {\n  let minPrice = Infinity, maxProfit = 0;\n  for (const p of prices) {\n    minPrice = Math.min(minPrice, p);\n    maxProfit = Math.max(maxProfit, p - minPrice);\n  }\n  return maxProfit;\n}",
     "why": "Single-pass greedy algorithm with zero heap allocations and branch optimization.",
     "code": "fn max_profit(prices: Vec<i32>) -> i32 {\n    let mut min_price = i32::MAX;\n    let mut max_profit = 0;\n\n    for price in prices {\n        if price < min_price {\n            min_price = price;\n        } else if price - min_price > max_profit {\n            max_profit = price - min_price;\n        }\n    }\n    max_profit\n}\n\nfn main() {\n    let prices = vec![7, 1, 5, 3, 6, 4];\n    println!(\"Max profit: {}\", max_profit(prices));\n}"
   },
@@ -491,7 +491,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 8: LeetCode in Rust",
     "title": "Valid Palindrome (#125) — Two Pointers",
     "desc": "Verify if a string is a palindrome considering only alphanumeric characters and ignoring case. Solved in Rust using two pointers over an iterator with zero heap allocations.",
-    "nodeCode": "// JS Valid Palindrome\nfunction isPalindrome(s) {\n  const clean = s.toLowerCase().replace(/[^a-z0-9]/g, '');\n  return clean === clean.split('').reverse().join('');\n}",
+    "nodeCode": "// TypeScript Valid Palindrome\nfunction isPalindrome(s: string): boolean {\n  const clean = s.toLowerCase().replace(/[^a-z0-9]/g, '');\n  return clean === clean.split('').reverse().join('');\n}",
     "why": "Two-pointer in-place traversal avoids allocating new filtered strings.",
     "code": "fn is_palindrome(s: &str) -> bool {\n    let iter = s.chars()\n        .filter(|c| c.is_alphanumeric())\n        .flat_map(|c| c.to_lowercase());\n    iter.clone().eq(iter.rev())\n}\n\nfn main() {\n    println!(\"'A man, a plan, a canal: Panama' is palindrome? {}\", is_palindrome(\"A man, a plan, a canal: Panama\"));\n    println!(\"'race a car' is palindrome? {}\", is_palindrome(\"race a car\"));\n}"
   },
@@ -507,9 +507,9 @@ export const chaptersData: Record<string, Chapter> = {
   "lc_max_subarray": {
     "num": "LC53",
     "part": "Part 8: LeetCode in Rust",
-    "title": "Maximum Subarray (#53) \u2014 Kadane's Algorithm",
+    "title": "Maximum Subarray (#53) — Kadane's Algorithm",
     "desc": "Given an integer array `nums`, find the subarray with the largest sum and return its sum. Kadane's dynamic programming algorithm executes in O(n) time and O(1) space.",
-    "nodeCode": "// JS Kadane's Algorithm\nfunction maxSubArray(nums) {\n  let maxSoFar = nums[0], currMax = nums[0];\n  for (let i = 1; i < nums.length; i++) {\n    currMax = Math.max(nums[i], currMax + nums[i]);\n    maxSoFar = Math.max(maxSoFar, currMax);\n  }\n  return maxSoFar;\n}",
+    "nodeCode": "// TypeScript Kadane's Algorithm\nfunction maxSubArray(nums: number[]): number {\n  let maxSoFar = nums[0], currMax = nums[0];\n  for (let i = 1; i < nums.length; i++) {\n    currMax = Math.max(nums[i], currMax + nums[i]);\n    maxSoFar = Math.max(maxSoFar, currMax);\n  }\n  return maxSoFar;\n}",
     "why": "Kadane's algorithm executes in a single pass with O(1) auxiliary space.",
     "code": "use std::cmp::max;\n\nfn max_sub_array(nums: Vec<i32>) -> i32 {\n    let mut max_so_far = nums[0];\n    let mut current_max = nums[0];\n\n    for &num in nums.iter().skip(1) {\n        current_max = max(num, current_max + num);\n        max_so_far = max(max_so_far, current_max);\n    }\n\n    max_so_far\n}\n\nfn main() {\n    let nums = vec![-2, 1, -3, 4, -1, 2, 1, -5, 4];\n    println!(\"Maximum subarray sum: {}\", max_sub_array(nums));\n}"
   }

@@ -25,6 +25,9 @@
     <p style="color: #475569; line-height: 1.6; font-size: 0.95rem;">
       Use <strong><code>std::sync::Mutex</code></strong> for short, uncontended in-memory operations that never yield across <code>.await</code> points (it avoids async allocation overhead). Use <strong><code>tokio::sync::Mutex</code></strong> ONLY when the lock guard must be held across an <code>.await</code> boundary. Choose <strong><code>RwLock</code></strong> only when reads vastly exceed writes (&gt;90% reads) with non-trivial critical sections, otherwise the atomic state tracking overhead of <code>RwLock</code> will be slower than an uncontended Mutex.
     </p>
+    <p style="color: #475569; line-height: 1.6; font-size: 0.95rem; margin-bottom: 0;">
+      Additionally, <code>std::sync::Mutex</code> and <code>std::sync::RwLock</code> implement <strong>Lock Poisoning</strong> (if a thread panics while holding the lock, subsequent calls return a <code>PoisonError</code> to protect against corrupt state), whereas <code>tokio::sync::Mutex</code> and <code>parking_lot::Mutex</code> intentionally do not poison on panic.
+    </p>
   </div>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">

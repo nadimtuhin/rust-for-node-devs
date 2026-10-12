@@ -33,6 +33,10 @@ const groupedParts = chaptersList.reduce((acc, [key, ch]) => {
     </div>
   </div>
 
+  <div id="noResultsNotice" class="no-results-notice" style="display:none; padding:1.25rem; text-align:center; color:var(--text-muted); font-size:0.85rem;" role="status">
+    No matching chapters found.
+  </div>
+
   {Object.entries(groupedParts).map(([partName, items]) => (
     <div class="sidebar-part-group">
       <div class="sidebar-part-label">{partName}</div>
@@ -41,7 +45,7 @@ const groupedParts = chaptersList.reduce((acc, [key, ch]) => {
           class={`chapter-nav-item ${currentKey === item.key ? 'active' : ''}`}
           role="button" 
           tabindex="0" 
-          aria-current={currentKey === item.key ? 'true' : 'false'}
+          aria-current={currentKey === item.key ? 'true' : undefined}
           aria-label={`Select lesson ${item.title}`} 
           data-id={item.key} 
           onclick={`selectChapter('${item.key}')`} onkeydown={`if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectChapter('${item.key}'); }`}

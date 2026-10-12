@@ -23,7 +23,7 @@ const groupedParts = chaptersList.reduce((acc, [key, ch]) => {
     <div class="sidebar-title-row">
       <div style="display: flex; align-items: center; gap: 0.4rem;">
         <span class="sidebar-title">📖 Table of Contents</span>
-        <span class="sidebar-badge-count" id="sidebarCountBadge">56 Chapters</span>
+        <span class="sidebar-badge-count" id="sidebarCountBadge" aria-live="polite" aria-atomic="true">56 Chapters</span>
       </div>
       <button id="sidebarCollapseBtn" class="sidebar-collapse-btn" onclick="toggleSidebar()" aria-label="Collapse Table of Contents sidebar" title="Collapse sidebar">◀</button>
     </div>

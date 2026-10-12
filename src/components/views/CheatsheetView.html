@@ -76,10 +76,34 @@
           <td style="padding: 0.75rem 0.5rem;"><code>pub trait Printable {<br/>&nbsp;&nbsp;fn print(&self);<br/>}<br/>impl Printable for MyStruct { ... }</code></td>
         </tr>
         <!-- Generics / Bounds -->
-        <tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Generics & Bounds</td>
           <td style="padding: 0.75rem 0.5rem;"><code>function log&lt;T extends Printable&gt;(x: T)</code></td>
           <td style="padding: 0.75rem 0.5rem;"><code>fn log&lt;T: Printable + Send&gt;(x: T)<br/>// or with where clause: where T: Printable</code></td>
+        </tr>
+        <!-- Arrays and Collections -->
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Arrays &amp; Vectors</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>const arr = [1, 2, 3];<br/>arr.push(4);</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>let mut vec = vec![1, 2, 3];<br/>vec.push(4);<br/>Fixed stack array: [i32; 3]</code></td>
+        </tr>
+        <!-- Hash Maps / Objects -->
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Hash Maps / Records</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>const map = new Map&lt;string, number&gt;();<br/>map.set("key", 42);</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>let mut map = HashMap::new();<br/>map.insert("key".to_string(), 42);</code></td>
+        </tr>
+        <!-- Async Task Spawning -->
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Background Task</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>setImmediate(async () => { ... });<br/>Promise.all([...]);</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>tokio::spawn(async move { ... });<br/>tokio::join!(fut1, fut2);</code></td>
+        </tr>
+        <!-- Thread-Safe Reference Counting -->
+        <tr>
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Shared State</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>const shared = { count: 0 };<br/>// accessible everywhere on single thread</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>Arc&lt;Mutex&lt;T&gt;&gt; // multi-threaded shared mutability<br/>Arc&lt;RwLock&lt;T&gt;&gt; // read-heavy workloads</code></td>
         </tr>
       </tbody>
     </table>

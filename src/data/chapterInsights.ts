@@ -57,7 +57,7 @@ export const chapterInsights: Record<string, ChapterInsight> = {
   },
   "axum_api": {
     "proTip": "In Axum, handlers return anything implementing `IntoResponse` (strings, tuples, Json<T>, Result).",
-    "footgun": "Extractor order matters in Axum: body extractors must typically be the final argument.",
+    "footgun": "Body extractors consuming the request stream (e.g. `Json<T>`, `String`, `Bytes`) must strictly be the final argument in the handler parameter list.",
     "archNote": "Axum runs on Hyper and Tower, achieving over 150,000 req/sec on modest server hardware."
   },
   "state_singleton": {
@@ -116,8 +116,8 @@ export const chapterInsights: Record<string, ChapterInsight> = {
     "archNote": "Keeping structs within a 64-byte CPU cache line prevents expensive extra memory bus fetch cycles."
   },
   "sqlx_compile_time": {
-    "proTip": "Use `sqlx-data.json` offline mode for CI/CD pipelines where live database connections are unavailable.",
-    "footgun": "Schema migrations must be applied before running `cargo build` when compile-time query macros are used.",
+    "proTip": "Run `cargo sqlx prepare` to generate `.sqlx/` metadata and commit it to git so CI builds compile offline with `SQLX_OFFLINE=true`.",
+    "footgun": "Schema migrations must be applied to the active database before running `cargo build` when compile-time query macros are used.",
     "archNote": "SQLx requires zero ORM abstraction tax: raw SQL queries execute directly with zero runtime query building overhead."
   },
   "db_pool": {
@@ -176,9 +176,9 @@ export const chapterInsights: Record<string, ChapterInsight> = {
     "archNote": "Anyhow boxes the error on the heap only when an error actually occurs, keeping the success path zero-cost."
   },
   "channels_sync": {
-    "proTip": "Use bounded channels (`mpsc::sync_channel`) in production to prevent unbounded memory growth under load.",
+    "proTip": "Use bounded async channels (`tokio::sync::mpsc::channel(buffer)`) in async code to prevent memory exhaustion and avoid blocking executor threads.",
     "footgun": "Failing to drop all sender clones keeps receiver loops waiting forever.",
-    "archNote": "Tokio channels use lock-free ring buffers for high-throughput inter-task communication."
+    "archNote": "Tokio channels use lock-free ring buffers for high-throughput inter-task communication without OS thread contention."
   },
   "graceful_shutdown": {
     "proTip": "Combine `tokio::signal::ctrl_c()` with unix signal listeners for cross-platform container signals.",
@@ -197,7 +197,7 @@ export const chapterInsights: Record<string, ChapterInsight> = {
   },
   "unsafe_rust": {
     "proTip": "Wrap all unsafe code inside safe abstractions that uphold invariants so external consumers cannot trigger undefined behavior.",
-    "footgun": "Undefined behavior in unsafe code can corrupt memory silently. Always test with `cargo miri`.",
+    "footgun": "Undefined behavior in unsafe code can corrupt memory silently. Always test with `cargo +nightly miri test` (note: Miri cannot inspect foreign C FFI).",
     "archNote": "99% of production Rust code requires zero unsafe blocks; standard libraries encapsulate unsafe operations safely."
   },
   "foreign_function_interface": {

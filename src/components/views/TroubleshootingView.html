@@ -5,51 +5,97 @@
     <p style="font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto;">Exact compilation flags, profiler configurations, and step-by-step diagnostic workflows for zero-overhead systems investigation.</p>
   </div>
 
+  <!-- Comparison Matrix: Node.js vs Rust Observability -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">Diagnostics &amp; Profiling Rosetta Stone</h2>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">How core Node.js diagnostic tooling maps directly to Rust systems profiling equivalents:</p>
+    <div style="overflow-x: auto; margin-top: 1rem;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.875rem; text-align: left;">
+        <thead>
+          <tr style="border-bottom: 2px solid #e2e8f0; background: #f8fafc;">
+            <th style="padding: 0.75rem 1rem; color: #334155;">Diagnostic Goal</th>
+            <th style="padding: 0.75rem 1rem; color: #334155;">Node.js Tooling</th>
+            <th style="padding: 0.75rem 1rem; color: #334155;">Rust Equivalent</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 0.75rem 1rem; font-weight: 600;">CPU Profiling / Flamegraphs</td>
+            <td style="padding: 0.75rem 1rem;"><code>0x</code>, <code>clinic flame</code>, <code>node --prof</code></td>
+            <td style="padding: 0.75rem 1rem;"><code>cargo flamegraph</code> (perf / DTrace)</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 0.75rem 1rem; font-weight: 600;">Event Loop / Async Starvation</td>
+            <td style="padding: 0.75rem 1rem;"><code>clinic bubbleprof</code>, <code>event-loop-lag</code></td>
+            <td style="padding: 0.75rem 1rem;"><code>tokio-console</code> (Task tracing subscriber)</td>
+          </tr>
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="padding: 0.75rem 1rem; font-weight: 600;">Heap Allocations &amp; Churn</td>
+            <td style="padding: 0.75rem 1rem;">Chrome DevTools Heap Snapshot, <code>clinic heapprofiler</code></td>
+            <td style="padding: 0.75rem 1rem;"><code>dhat-rs</code>, Valgrind <code>massif</code></td>
+          </tr>
+          <tr>
+            <td style="padding: 0.75rem 1rem; font-weight: 600;">Memory Safety &amp; UB</td>
+            <td style="padding: 0.75rem 1rem;">N/A (Managed VM) / ASan for C++ Addons</td>
+            <td style="padding: 0.75rem 1rem;"><code>cargo +nightly miri</code> (MIR interpreter)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
   <!-- Flamegraph Section -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">1. CPU Flamegraph Profiling (<code>cargo-flamegraph</code>)</h2>
-    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Generates interactive SVG call graphs. Requires release optimizations combined with debug symbols.</p>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Generates interactive SVG call graphs (like <code>0x</code> or <code>clinic flame</code> in Node). Requires release optimizations combined with debug symbols.</p>
     <p style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem;">Cargo.toml configuration:</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code>[profile.release]
-debug = true       # Retain DWARF symbols for function names
+debug = true       # Retain DWARF symbols for function names (line numbers & symbols)
 strip = false      # Do not strip symbol tables</code></pre>
-    <p style="font-weight: 600; font-size: 0.9rem; margin: 1rem 0 0.25rem;">Execution commands:</p>
+    <p style="font-weight: 600; font-size: 0.9rem; margin: 1rem 0 0.25rem;">Execution commands (use <code>--root</code> instead of running <code>sudo cargo</code> to avoid target/ permission corruption):</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code># Installation
 cargo install flamegraph
 
-# macOS (uses DTrace under the hood; requires root privilege):
-sudo cargo flamegraph --bin my-service
+# macOS (uses DTrace under the hood; --root elevates DTrace safely):
+cargo flamegraph --root --bin my-service -- --port 8080
 
-# Linux (uses perf; ensure perf events are unlocked):
+# Linux (uses perf; ensure perf events are unlocked or pass --root):
 sudo sysctl -w kernel.perf_event_paranoid=-1
-cargo flamegraph --bin my-service</code></pre>
+cargo flamegraph --bin my-service -- --port 8080
+
+# Profile specific benchmark or integration test:
+cargo flamegraph --test integration_tests -- test_throughput</code></pre>
   </div>
 
   <!-- Miri Section -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">2. Undefined Behavior Detection (<code>cargo miri</code>)</h2>
-    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Miri interprets Rust Mid-level Intermediate Representation (MIR) to catch pointer provenance violations, stacked borrow defects, memory leaks, and unaligned reads at runtime.</p>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Miri interprets Rust Mid-level Intermediate Representation (MIR) to catch pointer provenance violations, memory leaks, data races, and aliasing issues at runtime.</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code># Install nightly toolchain & Miri component
-rustup toolchain install nightly --component miri
-rustup override set nightly
+rustup +nightly component add miri
 
-# Run tests under Miri interpreter
-cargo miri test
+# Run test suite under Miri using toolchain override without polluting global default:
+cargo +nightly miri test
 
-# Strictest borrow checking with Tree Borrows & pointer provenance validation:
-MIRIFLAGS="-Zmiri-tree-borrows -Zmiri-strict-provenance" cargo miri test</code></pre>
+# Run a specific binary:
+cargo +nightly miri run --bin my-service
+
+# Strictest memory model using modern Tree Borrows + pointer provenance validation:
+MIRIFLAGS="-Zmiri-tree-borrows -Zmiri-strict-provenance -Zmiri-symbolic-alignment-check" cargo +nightly miri test</code></pre>
   </div>
 
   <!-- Tokio Console Section -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">3. Real-Time Async Task Tracing (<code>tokio-console</code>)</h2>
-    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Inspect task scheduling starvation, blocked async executors, and full channel backpressures live.</p>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Inspect task scheduling starvation, blocked async worker threads, and channel backpressure live (equivalent to Node.js event-loop lag inspection and <code>clinic bubbleprof</code>).</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code>// 1. Cargo.toml dependency:
+// [dependencies]
 // console-subscriber = "0.4"
+// tokio = { version = "1", features = ["full", "tracing"] }
 
 // 2. In src/main.rs: MUST initialize BEFORE constructing the Tokio runtime:
 fn main() -> Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    console_subscriber::init(); // Initialize subscriber first
+    console_subscriber::init(); // Starts gRPC telemetry server on 127.0.0.1:6669
 
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -63,15 +109,21 @@ fn main() -> Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 RUSTFLAGS="--cfg tokio_unstable" cargo run
 
 # 4. In a separate terminal, launch the console TUI:
-cargo install tokio-console
+cargo install --locked tokio-console
 tokio-console http://127.0.0.1:6669</code></pre>
   </div>
 
   <!-- Memory Profiling DHAT & Valgrind -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">4. Memory Allocation & Heap Profiling (DHAT & Valgrind)</h2>
-    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Track heap churn, short-lived allocations, and memory leaks down to the byte without runtime penalties.</p>
-    <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code>// Using DHAT (Dynamic Heap Analysis Tool) inside Rust:
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">4. Memory Allocation &amp; Heap Profiling (DHAT &amp; Valgrind)</h2>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Track heap churn, short-lived allocations, and memory leaks down to exact stack frames without Chrome DevTools V8 overhead.</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code>// 1. Cargo.toml:
+// [dependencies]
+// dhat = { version = "0.3", optional = true }
+// [features]
+// dhat-heap = ["dep:dhat"]
+
+// 2. In src/main.rs:
 #[cfg(feature = "dhat-heap")]
 #[global_allocator]
 static ALLOC: dhat::Alloc = dhat::Alloc;
@@ -79,17 +131,18 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 fn main() {
     #[cfg(feature = "dhat-heap")]
     let _profiler = dhat::Profiler::new_heap();
-    // application logic...
-    // Automatically writes `dhat-heap.json` upon process exit
+
+    // Application logic...
+    // Automatically writes `dhat-heap.json` upon graceful process exit
 }</code></pre>
-    <p style="font-weight: 600; font-size: 0.9rem; margin: 1rem 0 0.25rem;">DHAT Profiling execution & inspection:</p>
-    <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code># Run binary with dhat-heap feature and debug symbols:
+    <p style="font-weight: 600; font-size: 0.9rem; margin: 1rem 0 0.25rem;">DHAT Profiling execution &amp; inspection:</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code># Run binary with dhat-heap feature and release debug symbols:
 cargo run --release --features dhat-heap
 
 # Visualize results in the interactive DHAT web viewer:
 # Open https://nnethercote.github.io/dh_view/dh_view.html and load `dhat-heap.json`</code></pre>
-    <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem; margin-top: 0.75rem;"><code># Linux Valgrind Massif (Heap Profiling):
-valgrind --tool=massif --pages-as-heap=yes target/release/my-service
-ms_print massif.out.&lt;pid&gt;</code></pre>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem; margin-top: 0.75rem;"><code># Linux Valgrind Massif (Full Process Heap Profiler):
+valgrind --tool=massif --pages-as-heap=yes --massif-out-file=massif.out target/release/my-service
+ms_print massif.out</code></pre>
   </div>
 </div>

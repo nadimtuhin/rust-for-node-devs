@@ -57,12 +57,76 @@
     <p style="color: #475569; line-height: 1.6;">In Node.js, duplicate packages often lead to massive nested <code>node_modules</code> and runtime collisions (prototype pollution). Cargo compiles external crates once into target cache. If two dependencies require different major versions (e.g. <code>serde 1.0</code> and <code>serde 0.9</code>), Cargo mangles the symbols and compiles both side-by-side with zero collisions.</p>
   </div>
 
-    <!-- Additive Features -->
+  <!-- Additive Features -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">3. Additive Feature Flags & Opt-Out (default-features = false)</h2>
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">3. Additive Feature Flags &amp; Opt-Out (default-features = false)</h2>
     <p style="color: #475569; line-height: 1.6;">In Rust, crate capabilities are gated behind compile-time feature flags. Features are <strong>strictly additive</strong>: if dependency A enables <code>features = ["derive"]</code> and dependency B does not, Cargo builds the superset union. To minimize binary bloat or replace default libraries (e.g. replacing OpenSSL with pure-Rust rustls), explicitly declare <code>default-features = false</code>:</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code>[dependencies]
 # Opt out of heavy default features (e.g. native-tls):
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 serde = { version = "1.0", default-features = false, features = ["alloc"] }</code></pre>
   </div>
+
+  <!-- Workspaces & Inheritance -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">4. Cargo Workspaces &amp; Dependency Inheritance</h2>
+    <p style="color: #475569; line-height: 1.6;">Similar to pnpm workspaces or Turborepo, Cargo workspaces allow managing multiple crates with unified lockfiles and shared dependencies via <code>workspace = true</code>:</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code># Root Cargo.toml
+[workspace]
+members = ["crates/api", "crates/auth", "crates/db"]
+
+[workspace.dependencies]
+tokio = { version = "1.43", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+tracing = "0.1"
+
+# crates/api/Cargo.toml
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }</code></pre>
+  </div>
+
+  <!-- SemVer 0.x Rules -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">5. SemVer Quirks: Pre-1.0 Versions in Cargo vs npm</h2>
+    <p style="color: #475569; line-height: 1.6;">A major footgun for Node.js engineers is how Cargo handles <code>0.x</code> versions:</p>
+    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem; margin-top: 0.5rem;">
+      <thead>
+        <tr style="border-bottom: 2px solid #e2e8f0; color: #64748b;">
+          <th style="padding: 0.75rem 0.5rem;">Declared Version</th>
+          <th style="padding: 0.75rem 0.5rem;">Cargo Permitted Range</th>
+          <th style="padding: 0.75rem 0.5rem;">Breaking Change Point</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem;"><code>"1.2.3"</code> (or <code>"^1.2.3"</code>)</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>&gt;= 1.2.3, &lt; 2.0.0</code></td>
+          <td style="padding: 0.75rem 0.5rem;">Bump to <code>2.0.0</code></td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem;"><code>"0.2.3"</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>&gt;= 0.2.3, &lt; 0.3.0</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><strong>Minor bumps are BREAKING in 0.x!</strong></td>
+        </tr>
+        <tr>
+          <td style="padding: 0.75rem 0.5rem;"><code>"0.0.3"</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>== 0.0.3</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><strong>Patch bumps are BREAKING in 0.0.x!</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Build Profiles -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">6. Production Build Profiles &amp; LTO Optimization</h2>
+    <p style="color: #475569; line-height: 1.6;">In Node.js, minification with esbuild/terser trims bundle size. In Rust, LLVM optimization flags in <code>Cargo.toml</code> strip unused code, inline across crate boundaries, and reduce container binary size by up to 80%:</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code>[profile.release]
+opt-level = 3        # Maximum optimizations
+lto = "thin"         # Link-Time Optimization across crate boundaries (or "fat")
+codegen-units = 1    # Slower compile, maximum binary optimization and inlining
+panic = "abort"      # Strip unwinding landing pads (shrinks binary, instant exit)
+strip = true         # Automatically strip debug symbols (saves 60-80% binary size)</code></pre>
+  </div>
+</div>

@@ -15,18 +15,19 @@
     <p style="color: #475569; line-height: 1.6;"><code>std::sync::MutexGuard</code> explicitly does <strong>not</strong> implement the <code>Send</code> trait because OS-level mutexes (e.g. pthread mutexes) require the unlocking thread to be the identical thread that acquired the lock. Tokio's multi-threaded work-stealing scheduler can yield a task on Thread A and resume it on Thread B. The compiler rejects this at compile time. The idiomatic fix is scoping the synchronous lock to drop before the await, or using message-passing channels.</p>
   </div>
 
-  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h3 style="margin-top: 0; color: #0f172a;">Q3: What is Pin&lt;&amp;mut T&gt; and why is it essential for async Rust?</h3>
     <p style="color: #475569; line-height: 1.6;">Async functions compile into state machines. When a future holds references across an <code>.await</code> point, it becomes a <strong>self-referential struct</strong> (fields pointing to other fields inside the same struct). If moved in memory, internal pointers become dangling pointers! <code>Pin</code> wraps a pointer to guarantee the underlying data will never move in memory before being dropped.</p>
-  
-  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h3 style="margin-top: 0; color: #0f172a; font-size: 1.15rem;">Q4: When should you choose <code>std::sync::Mutex</code> vs <code>tokio::sync::Mutex</code> vs <code>RwLock</code>?</h3>
     <p style="color: #475569; line-height: 1.6; font-size: 0.95rem;">
       Use <strong><code>std::sync::Mutex</code></strong> for short, uncontended in-memory operations that never yield across <code>.await</code> points (it avoids async allocation overhead). Use <strong><code>tokio::sync::Mutex</code></strong> ONLY when the lock guard must be held across an <code>.await</code> boundary. Choose <strong><code>RwLock</code></strong> only when reads vastly exceed writes (&gt;90% reads) with non-trivial critical sections, otherwise the atomic state tracking overhead of <code>RwLock</code> will be slower than an uncontended Mutex.
     </p>
   </div>
 
-  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h3 style="margin-top: 0; color: #0f172a; font-size: 1.15rem;">Q5: What is Rust's precise RAII drop order for variables and struct fields?</h3>
     <p style="color: #475569; line-height: 1.6; font-size: 0.95rem;">
       1. <strong>Local variables</strong> in a function scope are dropped in <em>reverse declaration order</em> (LIFO: last declared is dropped first).<br/>
@@ -34,5 +35,20 @@
       3. Array and slice elements are dropped sequentially from index 0 to n-1.
     </p>
   </div>
-</div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h3 style="margin-top: 0; color: #0f172a; font-size: 1.15rem;">Q6: What is a Fat Pointer in Rust and what are its memory dimensions?</h3>
+    <p style="color: #475569; line-height: 1.6; font-size: 0.95rem;">
+      A regular reference (e.g. <code>&amp;i32</code> or <code>&amp;MyStruct</code>) is 1 word (8 bytes on 64-bit architecture) pointing directly to data. A <strong>Fat Pointer</strong> is 2 words (16 bytes) storing both a data pointer and runtime metadata:<br/>
+      • <strong>Slices (<code>&amp;[T]</code> or <code>&amp;str</code>)</strong>: <code>(data_ptr: *const T, len: usize)</code>.<br/>
+      • <strong>Trait Objects (<code>&amp;dyn Trait</code>)</strong>: <code>(data_ptr: *const (), vtable_ptr: *const ())</code>. The vtable contains the struct's size, alignment, destructor (drop glue), and function pointers for dynamic dispatch.
+    </p>
+  </div>
+
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h3 style="margin-top: 0; color: #0f172a; font-size: 1.15rem;">Q7: What is undefined behavior (UB) in Rust and does <code>unsafe</code> turn off the borrow checker?</h3>
+    <p style="color: #475569; line-height: 1.6; font-size: 0.95rem;">
+      <strong>No!</strong> The <code>unsafe</code> block does NOT turn off type checking or the borrow checker. It only grants 5 specific superpowers: dereferencing raw pointers, calling unsafe functions/FFI, implementing unsafe traits, mutating mutable static variables, and accessing fields of a union. Violating aliasing rules (e.g., creating overlapping <code>&amp;mut</code> references) even inside <code>unsafe</code> triggers immediate Undefined Behavior, allowing LLVM optimizations to miscompile the binary.
+    </p>
+  </div>
 </div>

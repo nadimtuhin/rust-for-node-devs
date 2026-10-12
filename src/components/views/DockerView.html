@@ -9,9 +9,8 @@
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">1. The Gold-Standard Multi-Stage Dockerfile (with Stripping)</h2>
     <p>Using <code>cargo-chef</code> for layer caching and explicitly stripping unneeded debug symbols in the builder stage before packaging into Google Distroless:</p>
-    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Stage 1: Dependency Chef Base
-FROM rust:1.84-bookworm AS chef
-RUN cargo install cargo-chef
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Stage 1: Dependency Chef Base (Pre-compiled cargo-chef saves 2m of build time)
+FROM lukemathwalker/cargo-chef:latest-rust-1.84-bookworm AS chef
 WORKDIR /app
 
 # Stage 2: Prepare lockfile recipe

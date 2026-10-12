@@ -56,6 +56,17 @@ const graphNodes: any[] = [
   }
 ];
 
+if (cleanPath.startsWith('/chapter/')) {
+  graphNodes.push({
+    "@type": "LearningResource",
+    "@id": `${canonicalUrl}/#lesson`,
+    "name": title,
+    "description": description,
+    "learningResourceType": "Interactive Tutorial",
+    "isPartOf": { "@id": `${siteOrigin}/#course` }
+  });
+}
+
 if (activeBreadcrumbs.length > 1) {
   graphNodes.push({
     "@type": "BreadcrumbList",

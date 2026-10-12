@@ -41,6 +41,7 @@ const groupedParts = chaptersList.reduce((acc, [key, ch]) => {
           class={`chapter-nav-item ${currentKey === item.key ? 'active' : ''}`}
           role="button" 
           tabindex="0" 
+          aria-current={currentKey === item.key ? 'true' : 'false'}
           aria-label={`Select lesson ${item.title}`} 
           data-id={item.key} 
           onclick={`selectChapter('${item.key}')`} onkeydown={`if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectChapter('${item.key}'); }`}

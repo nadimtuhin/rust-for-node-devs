@@ -99,7 +99,9 @@ const initialChapter = chaptersData[initialKey];
 
       document.querySelectorAll('.chapter-nav-item').forEach(item => {
         const itemKey = item.getAttribute('data-id');
-        item.classList.toggle('active', itemKey === key);
+        const isActive = itemKey === key;
+        item.classList.toggle('active', isActive);
+        item.setAttribute('aria-current', isActive ? 'true' : 'false');
       });
 
       const partTag = document.getElementById('detailPartTag');
@@ -328,7 +330,7 @@ const initialChapter = chaptersData[initialKey];
 
         if (!data.success) {
           consoleArea.className = 'console-body is-error';
-          consoleArea.textContent = '❌ Compile Error:\n\n' + (data.stderr || 'Build failed.');
+          consoleArea.innerHTML = '<span style="color:#f87171;font-weight:bold;">❌ Compile Error:</span><br/><br/>' + ansiToHtml(data.stderr || 'Build failed.');
           if (statusDot) statusDot.className = 'status-dot error';
           if (statusTag) {
             statusTag.className = 'status-pill error';
@@ -384,6 +386,14 @@ const initialChapter = chaptersData[initialKey];
       }
     }
 
+    window.addEventListener('popstate', () => {
+      const params = new URLSearchParams(window.location.search);
+      const requested = params.get('chapter') || 'basic_vars';
+      if (window.chaptersData && window.chaptersData[requested]) {
+        selectChapter(requested);
+      }
+    });
+
     document.addEventListener('keydown', function(e) {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
@@ -392,7 +402,19 @@ const initialChapter = chaptersData[initialKey];
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         const input = document.getElementById('lessonSearchInput');
-        if (input) input.focus();
+        if (input) {
+          if (window.innerWidth <= 860) toggleSidebar(true);
+          input.focus();
+          input.select();
+        }
+      }
+      if (e.key === 'Escape') {
+        const sidebar = document.getElementById('chaptersList');
+        if (sidebar && sidebar.classList.contains('mobile-open')) {
+          toggleSidebar(false);
+          const expandBtn = document.getElementById('sidebarExpandBtn');
+          if (expandBtn) expandBtn.focus();
+        }
       }
     });
 

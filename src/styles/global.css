@@ -462,7 +462,7 @@ header {
 .studio-main-3col {
   display: flex;
   flex: 1;
-  height: calc(100vh - 54px);
+  height: 100vh;
   overflow: hidden;
   background: #f8fafc;
 }
@@ -470,7 +470,7 @@ header {
 .gitbook-container {
   display: flex;
   flex: 1;
-  height: calc(100vh - 54px);
+  height: 100vh;
   overflow: hidden;
   background: #f8fafc;
 }
@@ -478,7 +478,7 @@ header {
 .gitbook-main-scroll {
   flex: 1;
   min-height: 0;
-  height: 100%;
+  height: 100vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   background: #f8fafc;
@@ -727,6 +727,39 @@ header {
   position: sticky;
   top: 0;
   z-index: 20;
+}
+.sidebar-brand-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.sidebar-brand-row .brand {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+.sidebar-brand-row .brand:hover {
+  color: var(--rust-primary);
+}
+.sidebar-github-link {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  background: #ffffff;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+}
+.sidebar-github-link:hover {
+  background: var(--border-subtle);
+  color: var(--text);
 }
 .sidebar-title-row {
   display: flex;
@@ -1912,7 +1945,7 @@ main#main-content:not(.playground-column) {
   /* Off-canvas mobile drawer for Table of Contents */
   .chapters-sidebar {
     position: fixed;
-    top: 54px;
+    top: 0;
     bottom: 0;
     left: 0;
     width: min(320px, 85vw);
@@ -1939,7 +1972,7 @@ main#main-content:not(.playground-column) {
   .sidebar-backdrop {
     display: block;
     position: fixed;
-    top: 54px;
+    top: 0;
     left: 0;
     right: 0;
     bottom: 0;

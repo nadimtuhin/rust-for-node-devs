@@ -16,19 +16,67 @@
     </div>
   </div>
 
+  <!-- 2. Non-Lexical Lifetimes (NLL) & Polonius -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">2. Non-Lexical Lifetimes (NLL)</h2>
-    <p>In early versions of Rust, a reference lived until the end of its enclosing curly brace scope <code>}</code>. Since Rust 2018, the compiler uses <strong>Non-Lexical Lifetimes (NLL)</strong>: a borrow ends at its <em>last point of usage</em>.</p>
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">2. Non-Lexical Lifetimes (NLL) &amp; Polonius</h2>
+    <p>Historically (pre-Rust 2018), lifetimes were strictly <strong>lexical</strong>: a borrow remained active until the closing curly brace <code>}</code> of its enclosing AST block. Rust 2018 introduced <strong>NLL (Non-Lexical Lifetimes)</strong>, which calculates borrows over the Control Flow Graph (CFG) so that a borrow ends at its <em>last point of usage</em>.</p>
+    
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>let mut data = vec![1, 2, 3];
 
-let first = &amp;data[0]; // Immutable borrow begins
-println!("First item: {}", first); // Last point of usage! Immutable borrow ends here.
+let first = &amp;data[0];               // Immutable borrow begins
+println!("First item: {}", first);  // Last point of usage! Lexical borrow ends here under NLL.
 
-data.push(4); // Perfectly valid under NLL! No error.</code></pre>
+data.push(4);                       // Valid under NLL (in Rust 2015, this failed until scope ended)</code></pre>
+
+    <h4 style="margin: 1.25rem 0 0.5rem; color: #0f172a; font-size: 1.05rem;">The Next Frontier: Polonius (Origin-Based Analysis)</h4>
+    <p style="margin-top: 0; color: #475569; font-size: 0.95rem;">
+      Even NLL fails on conditional returns from map lookups because CFG borrows approximate lifetimes along whole control paths. <strong>Polonius</strong> is the next-generation borrow checker that tracks loans via origins dynamically across execution paths:
+    </p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>// Classic pattern rejected by NLL, accepted under Polonius:
+fn get_or_insert(map: &amp;mut HashMap&lt;String, String&gt;, key: &amp;str) -&gt; &amp;String {
+    if let Some(v) = map.get(key) {
+        return v; // Under NLL, this borrow persists into the 'else' branch!
+    }
+    map.insert(key.to_string(), String::from("default")); // NLL Error: cannot borrow mutably
+    &amp;map[key]
+}</code></pre>
+  </div>
+
+  <!-- 3. Reborrowing vs. Move Semantics -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">3. Reborrowing vs. Move Semantics</h2>
+    <p>Unlike immutable references (<code>&amp;T</code>) which implement <code>Copy</code>, mutable references (<code>&amp;mut T</code>) <strong>do not implement <code>Copy</code></strong>. Moving an <code>&amp;mut T</code> invalidates the source variable. However, Rust transparently inserts a <strong>reborrow</strong> when passing or assigning a mutable reference.</p>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 8px;">
+        <strong style="color: #c2410c;">Explicit Move (Ownership Transfer)</strong>
+        <p style="font-size: 0.9rem; color: #64748b; margin: 0.5rem 0;">Passing an owned value moves it permanently:</p>
+        <pre style="background: #0f172a; color: #f8fafc; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; font-family: monospace;"><code>let mut s = String::from("hi");
+let r1 = &amp;mut s;
+let r2 = r1; // MOVES r1 into r2!
+
+// println!("{}", r1); 
+// ERROR: borrow of moved value: `r1`
+println!("{}", r2); // OK</code></pre>
+      </div>
+
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 8px;">
+        <strong style="color: #16a34a;">Reborrowing (<code>&amp;mut *r</code>)</strong>
+        <p style="font-size: 0.9rem; color: #64748b; margin: 0.5rem 0;">Creates a temporary child borrow that suspends the parent:</p>
+        <pre style="background: #0f172a; color: #f8fafc; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; font-family: monospace;"><code>let mut s = String::from("hi");
+let mut r1 = &amp;mut s;
+
+// Implicit or explicit reborrow:
+let r2 = &amp;mut *r1; // r1 suspended while r2 lives
+r2.push_str(" world");
+
+println!("{}", r1); // OK! r1 usable once r2's lifetime ends</code></pre>
+      </div>
+    </div>
   </div>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">3. Escape Hatches &amp; Smart Pointers</h2>
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">4. Escape Hatches &amp; Smart Pointers</h2>
     <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
       <thead>
         <tr style="border-bottom: 2px solid #e2e8f0; color: #64748b;">

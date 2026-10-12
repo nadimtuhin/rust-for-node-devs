@@ -65,12 +65,12 @@ const nextTitle = hasNext ? chaptersData[keys[currentIndex + 1]].title : '';
       </div>
       <button id="copyNodeBtn" class="copy-snippet-btn" onclick="copyNodeSnippet()" aria-label="Copy Node.js snippet to clipboard">📋 Copy</button>
     </div>
-    <div class="node-code" id="detailNodeCode" tabindex="0" role="textbox" aria-readonly="true" aria-label="Node.js code example"><code set:html={highlightedNodeCode}></code></div>
+    <pre class="node-code" id="detailNodeCode" tabindex="0" role="region" aria-label="Node.js code example"><code set:html={highlightedNodeCode}></code></pre>
   </div>
 
   <div class="card-box rust-why-box gitbook-callout-box" role="region" aria-label="Rust Mental Model Rationale" style="border-left-color: #b7410e;">
     <div class="rust-why-title" style="color: #b7410e;"><span aria-hidden="true">🦀</span> The Rust Mental Model</div>
-    <p class="go-why-desc" id="detailRustWhy">
+    <p class="rust-why-desc" id="detailRustWhy">
       {chapter.why}
     </p>
   </div>

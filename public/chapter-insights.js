@@ -1,4 +1,3 @@
-// Public bundle of chapter insights
 window.chapterInsights = {
   "basic_vars": {
     "proTip": "Use variable shadowing instead of dummy temporary variables like port_str and port_int.",
@@ -281,4 +280,3 @@ window.chapterInsights = {
     "archNote": "Iterating with `.skip(1)` cleanly handles the first element initialization without extra branch checks in the loop."
   }
 };
-window.CHAPTER_INSIGHTS = window.chapterInsights;

@@ -26,12 +26,92 @@
     </div>
   </div>
 
-  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">The Cardinal Rule of Tokio</h2>
     <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 1rem 1.25rem; border-radius: 4px; font-weight: 600; color: #991b1b; margin: 1rem 0;">
       NEVER CALL SYNCHRONOUS BLOCKING CODE INSIDE AN ASYNC FUNCTION!<br>
       <code>std::thread::sleep</code> or synchronous file I/O blocks the OS thread assigned to the Tokio worker, stalling hundreds of concurrent HTTP futures!
     </div>
     <p>Always use non-blocking equivalents: <code>tokio::time::sleep</code> and <code>tokio::fs</code>, or offload with <code>tokio::task::spawn_blocking</code>.</p>
+  </div>
+
+  <!-- Cooperative Multitasking -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">Cooperative Multitasking &amp; <code>tokio::task::yield_now()</code></h2>
+    <p>Node.js developers frequently use <code>setImmediate()</code> to break up long-running computation loops so the event loop can service I/O. In Tokio, tasks run cooperatively without preemption on worker OS threads. If a task executes a CPU-heavy or tight iterative loop without hitting an <code>.await</code> point, it starves other tasks assigned to the same worker thread.</p>
+    
+    <div style="background: #f8fafc; border-left: 4px solid #0284c7; padding: 1rem 1.25rem; border-radius: 4px; margin: 1rem 0;">
+      <strong>The Solution:</strong> Call <code>tokio::task::yield_now().await</code> inside long-running async loops. This yields back to the Tokio scheduler, placing the current task at the back of the local run-queue.
+    </div>
+
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>use tokio::task;
+
+async fn process_large_dataset(chunks: Vec&lt;Chunk&gt;) {
+    for (i, chunk) in chunks.into_iter().enumerate() {
+        process_chunk(chunk);
+
+        // Cooperatively yield execution every 100 iterations:
+        if i % 100 == 0 {
+            task::yield_now().await;
+        }
+    }
+}</code></pre>
+    <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 0;"><em>Note:</em> Tokio also features an automatic internal "co-op budget" (defaulting to 128 poll iterations) for standard Tokio I/O drivers, but explicit loops require manual yields or <code>spawn_blocking</code>.</p>
+  </div>
+
+  <!-- tokio::select! & Cancellation Safety -->
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;"><code>tokio::select!</code> &amp; Cancellation Safety</h2>
+    <p>In JavaScript, <code>Promise.race([a, b])</code> allows the loser promise to continue executing in the background until fulfillment. In Tokio, <code>tokio::select!</code> employs <strong>destructive cancellation</strong>: whichever branch does not complete is dropped immediately, running the future's <code>Drop</code> destructor.</p>
+    
+    <p>A future is <strong>cancellation-safe</strong> if dropping it before completion does not cause corrupted state or dropped data when polled again or on retry.</p>
+
+    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem; margin-top: 1rem;">
+      <thead>
+        <tr style="border-bottom: 2px solid #e2e8f0; color: #64748b;">
+          <th style="padding: 0.75rem 0.5rem;">Safety Category</th>
+          <th style="padding: 0.75rem 0.5rem;">Methods &amp; Operations</th>
+          <th style="padding: 0.75rem 0.5rem;">Why / Risk</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom: 1px solid #f1f5f9;">
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600; color: #16a34a;">✅ Cancellation Safe</td>
+          <td style="padding: 0.75rem 0.5rem;">
+            <code>AsyncReadExt::read</code><br>
+            <code>mpsc::Receiver::recv</code><br>
+            <code>tokio::time::sleep</code><br>
+            <code>tokio::net::TcpListener::accept</code>
+          </td>
+          <td style="padding: 0.75rem 0.5rem; color: #475569;">
+            Data is either received or not yet touched. No intermediate buffered bytes are silently discarded if cancelled.
+          </td>
+        </tr>
+        <tr style="border-bottom: 1px solid #f1f5f9; background: #fff1f2;">
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600; color: #e11d48;">❌ Cancellation Unsafe</td>
+          <td style="padding: 0.75rem 0.5rem;">
+            <code>AsyncReadExt::read_exact</code><br>
+            <code>AsyncWriteExt::write_all</code><br>
+            <code>AsyncBufReadExt::read_line</code><br>
+            <code>tokio::io::copy</code>
+          </td>
+          <td style="padding: 0.75rem 0.5rem; color: #9f1239;">
+            <strong>Data loss hazard:</strong> If cancelled midway, bytes already read or written to the stream are dropped and cannot be recovered or resumed.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top: 1.25rem;">
+      <h4 style="margin: 0 0 0.5rem; font-size: 1rem; color: #0f172a;">Idiomatic Workaround for Unsafe Operations in <code>select!</code>:</h4>
+      <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">Keep the future pinned across iterations or use a loop over <code>AsyncReadExt::read</code> rather than <code>read_exact</code>:</p>
+      <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 6px; font-size: 0.85rem; font-family: monospace;"><code>// Pin the operation OUTSIDE the select loop to prevent dropping progress:
+let mut write_fut = Box::pin(writer.write_all(&amp;payload));
+
+tokio::select! {
+    res = &amp;mut write_fut =&gt; { /* handle completion */ }
+    _ = cancel_rx.changed() =&gt; { /* handle abort safely without dropping partial state */ }
+}</code></pre>
+    </div>
   </div>
 </div>

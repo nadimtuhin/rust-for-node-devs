@@ -104,7 +104,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 1: Web APIs & Axum",
     "title": "Express.js vs Axum Routing & Handlers",
     "desc": "Express uses callback middleware and mutable req/res objects. Axum leverages Tokio and type-safe extractors: handler parameters automatically deserialize JSON, headers, or state at compile time.",
-    "nodeCode": "// Express.js route\napp.get('/users/:id', (req, res) => {\n  res.json({ id: req.params.id, status: 'active' });\n});",
+    "nodeCode": "import express from 'express';\nconst app = express();\n\n// Express.js route handler\napp.get('/users/:id', (req, res) => {\n  res.json({ id: req.params.id, status: 'active' });\n});",
     "why": "Type-safe extractors parse requests declaratively and fail invalid requests before handler execution.",
     "code": "// Simulated Axum-style handler pattern for standalone playground\nstruct PathExtractor(u32);\nstruct JsonResponse { id: u32, status: &'static str }\n\nfn user_handler(PathExtractor(id): PathExtractor) -> JsonResponse {\n    JsonResponse { id, status: \"active\" }\n}\n\nfn main() {\n    let req = PathExtractor(42);\n    let resp = user_handler(req);\n    println!(\"Status: 200 OK | Payload: {{ id: {}, status: '{}' }}\", resp.id, resp.status);\n}"
   },
@@ -113,7 +113,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 1: Web APIs & Axum",
     "title": "Shared State with Arc<T> vs Global Singletons",
     "desc": "Node.js shares module-level variables across all requests because of the single-threaded event loop. Rust web servers are multi-threaded: shared state requires thread-safe reference counting (`Arc<T>`).",
-    "nodeCode": "// Node.js module singleton\nlet dbConnection = null;\nexport function getDb() { if (!dbConnection) dbConnection = connect(); return dbConnection; }",
+    "nodeCode": "// Node.js module singleton (shared across all requests)\nlet dbConnection: unknown = null;\n\nexport function getDb() {\n  if (!dbConnection) {\n    dbConnection = { host: 'localhost', port: 5432 };\n  }\n  return dbConnection;\n}",
     "why": "Arc<T> ensures safe thread-safe reference sharing without global mutable state corruption.",
     "code": "use std::sync::Arc;\nuse std::sync::atomic::{AtomicUsize, Ordering};\n\nstruct AppState {\n    request_counter: AtomicUsize,\n    db_pool_name: String,\n}\n\nfn main() {\n    // Wrap state in thread-safe reference counted pointer\n    let shared_state = Arc::new(AppState {\n        request_counter: AtomicUsize::new(0),\n        db_pool_name: \"PostgreSQL-Pool-1\".to_string(),\n    });\n\n    // Clone pointer for another thread or request\n    let worker_state = Arc::clone(&shared_state);\n    worker_state.request_counter.fetch_add(1, Ordering::SeqCst);\n\n    println!(\"Pool: {}\", shared_state.db_pool_name);\n    println!(\"Requests: {}\", shared_state.request_counter.load(Ordering::SeqCst));\n}"
   },
@@ -122,7 +122,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 1: Web APIs & Axum",
     "title": "Tower Middleware vs Express Middleware",
     "desc": "Express passes `(req, res, next)` through a chain of callbacks. Axum uses the Tower ecosystem, where middleware wraps asynchronous services adhering to `Service<Request>` contracts.",
-    "nodeCode": "// Express middleware\napp.use((req, res, next) => {\n  console.log(`${req.method} ${req.url}`);\n  next();\n});",
+    "nodeCode": "import express from 'express';\nconst app = express();\n\n// Express middleware\napp.use((req, res, next) => {\n  console.log(`${req.method} ${req.url}`);\n  next();\n});",
     "why": "Tower middleware is composable across any network protocol (HTTP, gRPC, TCP) with compile-time type verification.",
     "code": "// Demonstration of composable request pipeline\nstruct Request { method: &'static str, path: &'static str }\nstruct Response { status: u16 }\n\nfn logging_middleware<F>(req: Request, next: F) -> Response\nwhere\n    F: FnOnce(Request) -> Response,\n{\n    println!(\"[LOG] Received {} {}\", req.method, req.path);\n    let res = next(req);\n    println!(\"[LOG] Responded with status {}\", res.status);\n    res\n}\n\nfn main() {\n    let req = Request { method: \"GET\", path: \"/api/health\" };\n    let res = logging_middleware(req, |_| Response { status: 200 });\n    println!(\"Pipeline finished: status {}\", res.status);\n}"
   },
@@ -131,7 +131,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 1: Web APIs & Axum",
     "title": "HTTP Client: fetch / axios vs reqwest",
     "desc": "Node.js uses global `fetch()` or `axios`. In Rust, `reqwest` is the de-facto production HTTP client with built-in connection pooling, compression, JSON serialization, and streaming support.",
-    "nodeCode": "// Node.js fetch\nconst res = await fetch('https://api.github.com/zen');\nconst text = await res.text();\nconsole.log(text);",
+    "nodeCode": "// Node.js 18+ native global fetch\nconst res = await fetch('https://api.github.com/zen');\nconst text = await res.text();\nconsole.log(text);",
     "why": "Connection pooling is reused automatically across requests with static typing for incoming payloads.",
     "code": "// Simulated HTTP client response parsing pattern\nstruct Client;\nimpl Client {\n    fn get(&self, url: &str) -> Result<String, &'static str> {\n        if url.is_empty() { return Err(\"Empty URL\"); }\n        Ok(format!(\"Mock response from {}\", url))\n    }\n}\n\nfn main() {\n    let client = Client;\n    match client.get(\"https://api.example.com/status\") {\n        Ok(body) => println!(\"Body: {}\", body),\n        Err(e) => eprintln!(\"HTTP Error: {}\", e),\n    }\n}"
   },
@@ -149,7 +149,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 1: Web APIs & Axum",
     "title": "Environment Variables & Configuration",
     "desc": "Node.js reads `process.env.PORT` dynamically at runtime as strings. Rust loads and validates configuration during server boot using `dotenvy` and strongly-typed config structs.",
-    "nodeCode": "// Node.js dotenv\nrequire('dotenv').config();\nconst port = parseInt(process.env.PORT || '3000', 10);",
+    "nodeCode": "// Modern Node.js configuration (ESM / Node 20+ --env-file=.env)\nimport 'dotenv/config';\n\nconst port = parseInt(process.env.PORT ?? '3000', 10);\nconsole.log({ port });",
     "why": "Validate environment variables at startup so bad configurations fail fast before serving traffic.",
     "code": "use std::env;\n\nstruct AppConfig {\n    port: u16,\n    env: String,\n}\n\nimpl AppConfig {\n    fn load() -> Self {\n        let port = env::var(\"APP_PORT\")\n            .ok()\n            .and_then(|p| p.parse().ok())\n            .unwrap_or(8080);\n        let env = env::var(\"APP_ENV\").unwrap_or_else(|_| \"development\".to_string());\n        Self { port, env }\n    }\n}\n\nfn main() {\n    let config = AppConfig::load();\n    println!(\"Booting in [{}] mode on port :{}\", config.env, config.port);\n}"
   },
@@ -212,7 +212,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 3: Databases & SQL",
     "title": "Prisma / TypeORM vs SQLx Compile-Time SQL",
     "desc": "Node.js ORMs generate SQL queries dynamically at runtime or rely on code generators. SQLx connects to your database at build time and validates that every SQL query, table, and column exists and matches types!",
-    "nodeCode": "// Prisma runtime query\nconst users = await prisma.user.findMany({\n  where: { active: true }\n});",
+    "nodeCode": "import { PrismaClient } from '@prisma/client';\nconst prisma = new PrismaClient();\n\n// Prisma runtime query (types checked against schema generator)\nconst users = await prisma.user.findMany({\n  where: { active: true }\n});",
     "why": "Compile-time query verification eliminates runtime SQL syntax and column mismatch errors before deployment.",
     "code": "// Demonstration of type-safe SQL query projection\n#[derive(Debug)]\nstruct UserRow {\n    id: i64,\n    email: String,\n    is_active: bool,\n}\n\nfn mock_query_user(id: i64) -> Result<UserRow, &'static str> {\n    // In SQLx: sqlx::query_as!(UserRow, \"SELECT id, email, is_active FROM users WHERE id = $1\", id)\n    if id > 0 {\n        Ok(UserRow { id, email: \"user@example.com\".into(), is_active: true })\n    } else {\n        Err(\"User not found\")\n    }\n}\n\nfn main() {\n    match mock_query_user(1) {\n        Ok(user) => println!(\"Loaded user: {:?}\", user),\n        Err(e) => eprintln!(\"Database error: {}\", e),\n    }\n}"
   },
@@ -221,7 +221,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 3: Databases & SQL",
     "title": "Connection Pools: pg.Pool vs sqlx::Pool",
     "desc": "Node.js `pg.Pool` handles connections via the event loop. In Rust, `sqlx::Pool` manages asynchronous connection pooling across multi-threaded worker pools with configurable timeouts and keep-alives.",
-    "nodeCode": "// pg pool in Node.js\nconst { Pool } = require('pg');\nconst pool = new Pool({ max: 20 });\nconst client = await pool.connect();",
+    "nodeCode": "import { Pool } from 'pg';\n\nconst pool = new Pool({ max: 20 });\nconst client = await pool.connect();",
     "why": "Robust connection pooling prevents connection starvation and balances load across database replicas.",
     "code": "use std::sync::atomic::{AtomicUsize, Ordering};\n\nstruct MockDbPool {\n    max_connections: usize,\n    active_connections: AtomicUsize,\n}\n\nimpl MockDbPool {\n    fn new(max: usize) -> Self {\n        Self { max_connections: max, active_connections: AtomicUsize::new(0) }\n    }\n\n    fn acquire(&self) -> Result<usize, &'static str> {\n        let current = self.active_connections.fetch_add(1, Ordering::SeqCst);\n        if current >= self.max_connections {\n            self.active_connections.fetch_sub(1, Ordering::SeqCst);\n            return Err(\"Pool exhausted\");\n        }\n        Ok(current + 1)\n    }\n}\n\nfn main() {\n    let pool = MockDbPool::new(5);\n    println!(\"Connection acquired: {:?}\", pool.acquire());\n    println!(\"Connection acquired: {:?}\", pool.acquire());\n}"
   },
@@ -230,7 +230,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 3: Databases & SQL",
     "title": "Transactions & RAII Rollback",
     "desc": "In Node.js, unhandled exceptions inside transactions require manual `try/catch` and `ROLLBACK` calls. In Rust, transactions roll back automatically on drop if not explicitly committed!",
-    "nodeCode": "// Node.js transaction pattern\nconst client = await pool.connect();\ntry {\n  await client.query('BEGIN');\n  await client.query('COMMIT');\n} catch (e) {\n  await client.query('ROLLBACK');\n}",
+    "nodeCode": "import { Pool } from 'pg';\nconst pool = new Pool();\n\n// Node.js manual transaction management\nconst client = await pool.connect();\ntry {\n  await client.query('BEGIN');\n  // ... execute queries\n  await client.query('COMMIT');\n} catch (e) {\n  await client.query('ROLLBACK');\n  throw e;\n} finally {\n  client.release();\n}",
     "why": "RAII Rollback ensures transactions never leak or hang in an uncommitted state even during panics.",
     "code": "// Simulation of RAII transaction auto-rollback\nstruct Transaction {\n    committed: bool,\n}\n\nimpl Transaction {\n    fn begin() -> Self { Self { committed: false } }\n    fn commit(mut self) {\n        self.committed = true;\n        println!(\"--> Transaction successfully COMMITTED.\");\n    }\n}\n\nimpl Drop for Transaction {\n    fn drop(&mut self) {\n        if !self.committed {\n            println!(\"--> Transaction dropped without commit: Auto-ROLLBACK triggered!\");\n        }\n    }\n}\n\nfn main() {\n    println!(\"--- Test 1: Successful commit ---\");\n    let tx1 = Transaction::begin();\n    tx1.commit();\n\n    println!(\"\\n--- Test 2: Early return / error branch ---\");\n    let _tx2 = Transaction::begin();\n    // Scope ends here without commit -> Auto Rollback!\n}"
   },
@@ -239,7 +239,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 3: Databases & SQL",
     "title": "Redis Caching & Mutex Stampede Protection",
     "desc": "Node.js uses `ioredis` for caching. In Rust, `redis-rs` provides async connection multiplexing. Combining Redis with in-memory locks prevents cache stampedes on hot keys.",
-    "nodeCode": "// Node.js ioredis\nconst Redis = require('ioredis');\nconst redis = new Redis();\nconst val = await redis.get('user:10');",
+    "nodeCode": "import Redis from 'ioredis';\n\nconst redis = new Redis();\nconst val = await redis.get('user:10');",
     "why": "Connection multiplexing allows thousands of requests to pipeline commands over a single TCP socket.",
     "code": "use std::collections::HashMap;\n\n// Mock cache layer\nstruct Cache {\n    store: HashMap<String, String>,\n}\n\nimpl Cache {\n    fn new() -> Self { Self { store: HashMap::new() } }\n    fn get_or_set<F>(&mut self, key: &str, compute: F) -> String\n    where F: FnOnce() -> String {\n        if let Some(val) = self.store.get(key) {\n            return val.clone();\n        }\n        let computed = compute();\n        self.store.insert(key.to_string(), computed.clone());\n        computed\n    }\n}\n\nfn main() {\n    let mut cache = Cache::new();\n    let val1 = cache.get_or_set(\"hero\", || \"Batman\".to_string());\n    let val2 = cache.get_or_set(\"hero\", || \"Superman\".to_string());\n    println!(\"Val1: {}, Val2 (cached): {}\", val1, val2);\n}"
   },
@@ -248,7 +248,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 3: Databases & SQL",
     "title": "SeaORM & ActiveModel vs TypeORM",
     "desc": "If you require an ORM rather than raw SQLx, SeaORM provides an async ActiveModel pattern built on top of SQLx with migrations, relation mapping, and typed schema builders.",
-    "nodeCode": "// TypeORM Entity\n@Entity()\nclass User { @PrimaryGeneratedColumn() id: number; }",
+    "nodeCode": "import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';\n\n// TypeORM Entity decorator\n@Entity()\nclass User {\n  @PrimaryGeneratedColumn()\n  id!: number;\n\n  @Column()\n  name!: string;\n}",
     "why": "Type-safe relation joins with compile-time generated queries without dynamic reflection.",
     "code": "// SeaORM ActiveModel pattern with ActiveValue (Set vs Unchanged)\n#[derive(Debug, Clone)]\nenum ActiveValue<T> {\n    Set(T),\n    Unchanged(T),\n    NotSet,\n}\n\n#[derive(Debug)]\nstruct UserModel {\n    id: i32,\n    username: String,\n}\n\nstruct UserActiveModel {\n    username: ActiveValue<String>,\n}\n\nimpl UserActiveModel {\n    fn insert(self, id: i32) -> UserModel {\n        let name = match self.username {\n            ActiveValue::Set(val) => val,\n            ActiveValue::Unchanged(val) => val,\n            ActiveValue::NotSet => String::from(\"anonymous\"),\n        };\n        UserModel { id, username: name }\n    }\n}\n\nfn main() {\n    let new_user = UserActiveModel {\n        username: ActiveValue::Set(\"rustacean_hero\".to_string()),\n    };\n    let saved = new_user.insert(101);\n    println!(\"Saved SeaORM ActiveModel entity: {:?}\", saved);\n}"
   },
@@ -257,7 +257,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 3: Databases & SQL",
     "title": "MongoDB: Mongoose vs official mongodb crate",
     "desc": "Mongoose defines dynamic schemas with hooks. Rust's official `mongodb` crate uses Serde for BSON document mapping with type-safe collections.",
-    "nodeCode": "// Mongoose Model\nconst User = mongoose.model('User', new mongoose.Schema({ email: String }));",
+    "nodeCode": "import mongoose, { Schema } from 'mongoose';\n\n// Mongoose schema and model definition\nconst userSchema = new Schema({ email: String });\nconst User = mongoose.model('User', userSchema);",
     "why": "Type-safe BSON serialization eliminates schema validation discrepancies between app and database.",
     "code": "#[derive(Debug)]\nstruct MongoDocument {\n    oid: &'static str,\n    title: &'static str,\n}\n\nfn main() {\n    let doc = MongoDocument { oid: \"60c72b2f9b1d8b001c8e4d2a\", title: \"Rust BSON\" };\n    println!(\"MongoDB document: {:?}\", doc);\n}"
   },
@@ -266,7 +266,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 4: Queues & Workers",
     "title": "BullMQ vs Redis Streams in Rust",
     "desc": "BullMQ coordinates background job queues in Node.js using Redis Lua scripts. In Rust, Redis Streams or dedicated engines (`faktory-rs`, `apalis`) provide high-throughput job consumer workers.",
-    "nodeCode": "// BullMQ worker\nconst worker = new Worker('emails', async job => {\n  await sendMail(job.data);\n});",
+    "nodeCode": "import { Worker } from 'bullmq';\n\n// BullMQ worker processing background jobs\nconst worker = new Worker('emails', async (job) => {\n  console.log(`Sending email to ${job.data.to}`);\n});",
     "why": "Consumer groups allow scaling background workers across multiple machines with reliable delivery guarantees.",
     "code": "use std::sync::mpsc;\nuse std::thread;\n\nstruct Job { id: u64, payload: &'static str }\n\nfn main() {\n    let (tx, rx) = mpsc::channel::<Job>();\n\n    // Worker thread\n    let worker = thread::spawn(move || {\n        while let Ok(job) = rx.recv() {\n            println!(\"Worker processed job #{}: {}\", job.id, job.payload);\n        }\n    });\n\n    // Enqueue jobs\n    tx.send(Job { id: 1, payload: \"Send Welcome Email\" }).unwrap();\n    tx.send(Job { id: 2, payload: \"Process Invoice\" }).unwrap();\n    drop(tx); // Close channel\n\n    worker.join().unwrap();\n}"
   },
@@ -275,7 +275,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 4: Queues & Workers",
     "title": "Exponential Backoff & Dead-Letter Queues",
     "desc": "BullMQ handles retries with backoff strategies. In Rust, exponential backoff with jitter prevents thundering herd problems when downstream services experience outages.",
-    "nodeCode": "// BullMQ exponential backoff retry configuration\nawait queue.add('process-payment', data, {\n  attempts: 5,\n  backoff: { type: 'exponential', delay: 1000 }\n});",
+    "nodeCode": "import { Queue } from 'bullmq';\nconst queue = new Queue('payments');\n\n// BullMQ exponential backoff retry configuration\nawait queue.add('process-payment', { amount: 100 }, {\n  attempts: 5,\n  backoff: { type: 'exponential', delay: 1000 }\n});",
     "why": "Adding randomized jitter to exponential backoff prevents synchronized retries from overwhelming recovering services.",
     "code": "fn calculate_backoff_with_jitter(attempt: u32, base_ms: u64, max_ms: u64, jitter_percent: f64) -> u64 {\n    let exp = 2u64.pow(attempt);\n    let delay = (base_ms * exp) as f64 * (1.0 + jitter_percent);\n    std::cmp::min(delay as u64, max_ms)\n}\n\nfn main() {\n    let jitter_samples = [0.05, -0.02, 0.08, -0.04, 0.02];\n    for attempt in 0..5 {\n        let ms = calculate_backoff_with_jitter(attempt, 100, 5000, jitter_samples[attempt as usize]);\n        println!(\"Retry attempt {}: backoff with jitter {} ms\", attempt + 1, ms);\n    }\n    println!(\"[DLQ Status] Exhausted 5 retry attempts -> Routed message to Dead-Letter Queue (DLQ)\\n\");\n}"
   },
@@ -284,7 +284,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 5: Async & Tokio",
     "title": "Promise.all vs tokio::join! & tokio::spawn",
     "desc": "JavaScript runs on a single thread event loop. `Promise.all` executes concurrent async tasks cooperatively. In Rust, Tokio provides a multi-threaded work-stealing runtime with `tokio::join!` and `tokio::spawn`.",
-    "nodeCode": "// Promise.all in Node.js\nconst [users, posts] = await Promise.all([\n  fetchUsers(),\n  fetchPosts()\n]);",
+    "nodeCode": "// Concurrent async execution via Promise.all in Node.js\nasync function fetchUsers() { return ['Alice', 'Bob']; }\nasync function fetchPosts() { return [{ title: 'Intro to Rust' }]; }\n\nconst [users, posts] = await Promise.all([\n  fetchUsers(),\n  fetchPosts()\n]);",
     "why": "Tokio distributes asynchronous tasks across all physical CPU cores using work-stealing algorithms.",
     "code": "// Conceptual demonstration of concurrent tasks\nfn fetch_users() -> &'static str { \"users_loaded\" }\nfn fetch_posts() -> &'static str { \"posts_loaded\" }\n\nfn main() {\n    // In Tokio: let (users, posts) = tokio::join!(fetch_users(), fetch_posts());\n    let u = fetch_users();\n    let p = fetch_posts();\n    println!(\"Completed concurrent batch: {}, {}\", u, p);\n}"
   },
@@ -293,7 +293,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 5: Async & Tokio",
     "title": "Promise.race vs tokio::select!",
     "desc": "Node.js uses `Promise.race()` to await the fastest promise. Rust provides `tokio::select!`, which can simultaneously await futures, channel receives, and timeouts, canceling unselected branches.",
-    "nodeCode": "// Promise.race\nconst result = await Promise.race([fetchData(), timeout(5000)]);",
+    "nodeCode": "// Promise.race selects the fastest promise\nconst fetchData = async () => 'data';\nconst timeout = (ms: number) => new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), ms));\n\nconst result = await Promise.race([fetchData(), timeout(5000)]);",
     "why": "tokio::select! drops unselected futures immediately, cancelling them cleanly without lingering background execution.",
     "code": "// Simulation of select race pattern\nenum RaceResult {\n    Data(&'static str),\n    Timeout,\n}\n\nfn race_operation(fast: bool) -> RaceResult {\n    if fast { RaceResult::Data(\"Payload ready\") } else { RaceResult::Timeout }\n}\n\nfn main() {\n    match race_operation(true) {\n        RaceResult::Data(d) => println!(\"Fastest branch won: {}\", d),\n        RaceResult::Timeout => println!(\"Operation timed out!\"),\n    }\n}"
   },
@@ -302,7 +302,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 5: Async & Tokio",
     "title": "AbortController vs CancellationToken",
     "desc": "Node.js uses `AbortController` and `signal` to propagate cancellation. Rust's `tokio_util::sync::CancellationToken` provides cooperative cancellation across threads and tasks.",
-    "nodeCode": "// Node.js AbortController\nconst ac = new AbortController();\nsetTimeout(() => ac.abort(), 1000);\nfetch(url, { signal: ac.signal });",
+    "nodeCode": "// Node.js AbortController for cooperative cancellation\nconst ac = new AbortController();\nsetTimeout(() => ac.abort(), 1000);\n\nawait fetch('https://example.com/api', { signal: ac.signal });",
     "why": "CancellationToken enables clean, structured shutdowns across tree-like hierarchies of background worker tasks.",
     "code": "use std::sync::atomic::{AtomicBool, Ordering};\nuse std::sync::Arc;\n\nstruct MockToken {\n    cancelled: Arc<AtomicBool>,\n}\n\nimpl MockToken {\n    fn new() -> Self { Self { cancelled: Arc::new(AtomicBool::new(false)) } }\n    fn cancel(&self) { self.cancelled.store(true, Ordering::SeqCst); }\n    fn is_cancelled(&self) -> bool { self.cancelled.load(Ordering::SeqCst) }\n}\n\nfn main() {\n    let token = MockToken::new();\n    println!(\"Running worker. Is cancelled? {}\", token.is_cancelled());\n    token.cancel();\n    println!(\"Cancel signal sent. Is cancelled? {}\", token.is_cancelled());\n}"
   },
@@ -320,7 +320,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 5: Async & Tokio",
     "title": "Channels: mpsc, broadcast, watch & oneshot",
     "desc": "Node.js uses `EventEmitter` with event callbacks. Rust uses strongly typed channels: `oneshot` (single message), `mpsc` (many producers, one consumer), `broadcast` (pub/sub), and `watch` (state changes).",
-    "nodeCode": "// Node.js EventEmitter\nconst emitter = new EventEmitter();\nemitter.on('data', chunk => console.log(chunk));\nemitter.emit('data', 'hello');",
+    "nodeCode": "import { EventEmitter } from 'node:events';\n\nconst emitter = new EventEmitter();\nemitter.on('data', (chunk) => console.log(chunk));\nemitter.emit('data', 'hello');",
     "why": "Channels provide thread-safe communication and backpressure without shared memory locks.",
     "code": "use std::sync::mpsc;\n\nfn main() {\n    // MPSC: Multi-producer, single-consumer channel\n    let (tx, rx) = mpsc::channel();\n    let tx_clone = tx.clone();\n\n    tx.send(\"Message from worker 1\").unwrap();\n    tx_clone.send(\"Message from worker 2\").unwrap();\n    drop(tx);\n    drop(tx_clone);\n\n    for msg in rx {\n        println!(\"Received on channel: {}\", msg);\n    }\n}"
   },
@@ -329,7 +329,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 5: Async & Tokio",
     "title": "Graceful Shutdown & OS Signal Handling",
     "desc": "In Node.js, `process.on('SIGTERM')` handles shutdown. In Rust, Axum and Tokio provide `.with_graceful_shutdown()` to drain in-flight HTTP requests, commit transactions, and close sockets cleanly.",
-    "nodeCode": "// Node.js SIGTERM handler\nprocess.on('SIGTERM', () => {\n  server.close(() => process.exit(0));\n});",
+    "nodeCode": "import http from 'node:http';\nconst server = http.createServer();\n\n// Node.js SIGTERM graceful shutdown handler\nprocess.on('SIGTERM', () => {\n  server.close(() => process.exit(0));\n});",
     "why": "Graceful shutdown drains in-flight requests during zero-downtime rolling Kubernetes deployments.",
     "code": "use std::sync::atomic::{AtomicBool, Ordering};\nuse std::sync::Arc;\n\nstruct Server {\n    is_running: Arc<AtomicBool>,\n}\n\nimpl Server {\n    fn shutdown(&self) {\n        println!(\"Received SIGTERM: Draining in-flight requests...\");\n        self.is_running.store(false, Ordering::SeqCst);\n        println!(\"All connections drained. Server terminated cleanly.\");\n    }\n}\n\nfn main() {\n    let server = Server { is_running: Arc::new(AtomicBool::new(true)) };\n    println!(\"Server running on :8080\");\n    server.shutdown();\n}"
   },
@@ -347,7 +347,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 6: Systems Internals",
     "title": "NAPI-RS: Accelerating Node.js with Rust",
     "desc": "Instead of rewriting your entire Node.js backend, you can write performance-critical modules in Rust and compile them directly to native Node.js addons using `napi-rs` with zero V8 GC overhead.",
-    "nodeCode": "// Calling native Rust addon from Node.js\nconst { calculateHash } = require('./index.node');\nconst hash = calculateHash(largeBuffer);",
+    "nodeCode": "import { createRequire } from 'node:module';\nconst require = createRequire(import.meta.url);\n\n// Calling native Rust addon compiled with NAPI-RS\nconst { calculateHash } = require('./index.node');\nconst largeBuffer = Buffer.from('hello world');\nconst hash = calculateHash(largeBuffer);",
     "why": "Native addons execute at C speed directly within Node.js processes, offloading CPU-intensive tasks from the V8 event loop.",
     "code": "// Conceptual NAPI-RS export pattern in Rust\nfn fast_fibonacci(n: u32) -> u64 {\n    match n {\n        0 => 0,\n        1 => 1,\n        _ => {\n            let mut a = 0;\n            let mut b = 1;\n            for _ in 2..=n {\n                let temp = a + b;\n                a = b;\n                b = temp;\n            }\n            b\n        }\n    }\n}\n\nfn main() {\n    let result = fast_fibonacci(40);\n    println!(\"Fibonacci(40) computed in sub-microsecond: {}\", result);\n}"
   },
@@ -356,7 +356,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 6: Systems Internals",
     "title": "Unsafe Rust: When & How to Use It",
     "desc": "By default, Rust guarantees memory safety. The `unsafe` keyword does not turn off the borrow checker; it enables five specific superpowers: dereferencing raw pointers, calling FFI, mutating statics, and implementing unsafe traits.",
-    "nodeCode": "// Node.js FFI or Buffer manipulation\nconst buf = Buffer.allocUnsafe(100);",
+    "nodeCode": "import { Buffer } from 'node:buffer';\n\n// Allocating uninitialized memory (unsafe in Node.js)\nconst buf = Buffer.allocUnsafe(100);",
     "why": "Unsafe allows writing operating system drivers, lock-free data structures, and hardware interactions with strict isolation.",
     "code": "fn main() {\n    let mut num = 42;\n\n    // Creating raw pointers is safe\n    let r1 = &num as *const i32;\n    let r2 = &mut num as *mut i32;\n\n    // Dereferencing raw pointers requires unsafe block\n    unsafe {\n        println!(\"Raw pointer read: {}\", *r1);\n        *r2 = 99;\n        println!(\"Mutated via raw pointer: {}\", *r2);\n    }\n}"
   },
@@ -364,8 +364,8 @@ export const chaptersData: Record<string, Chapter> = {
     "num": "30",
     "part": "Part 6: Systems Internals",
     "title": "FFI: Calling C Libraries from Rust",
-    "desc": "Node.js uses node-gyp or ffi-napi. Rust natively supports C ABI calls using `extern \"C\"`, allowing seamless integration with system libraries like libssl, SQLite, or hardware SDKs.",
-    "nodeCode": "// Node.js ffi-napi\nconst ffi = require('ffi-napi');\nconst lib = ffi.Library('libc', { 'puts': ['int', ['string']] });",
+    "desc": "Node.js uses node-gyp or modern koffi. Rust natively supports C ABI calls using `extern \"C\"`, allowing seamless integration with system libraries like libssl, SQLite, or hardware SDKs.",
+    "nodeCode": "// Modern Node.js FFI using 'koffi' (replaces deprecated 'ffi-napi')\nimport koffi from 'koffi';\n\nconst libc = koffi.load('libc.so.6'); // or 'libc.dylib' on macOS\nconst puts = libc.func('int puts(const char *str)');\nputs('Hello from native C via Node.js!');",
     "why": "Rust links directly to C static and dynamic libraries with zero wrapper performance penalty.",
     "code": "use std::ffi::CString;\nuse std::os::raw::c_char;\n\n// Direct C ABI foreign function declaration\nextern \"C\" {\n    fn puts(s: *const c_char) -> i32;\n}\n\n#[repr(C)]\nstruct Point {\n    x: f64,\n    y: f64,\n}\n\nfn main() {\n    let pt = Point { x: 3.0, y: 4.0 };\n    println!(\"Point coordinate struct [repr(C)]: ({}, {})\", pt.x, pt.y);\n\n    let msg = CString::new(\"--> Executed foreign C ABI libc::puts directly from Rust!\").unwrap();\n    unsafe {\n        puts(msg.as_ptr());\n    }\n}"
   },
@@ -374,7 +374,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 6: Systems Internals",
     "title": "Custom Allocators: jemalloc & mimalloc",
     "desc": "V8 handles heap allocations using its internal garbage-collected heap. Rust defaults to the system allocator (glibc malloc), but switching to `jemalloc` or `mimalloc` dramatically improves multi-threaded throughput and prevents memory fragmentation.",
-    "nodeCode": "// Node.js exposes --max-old-space-size for V8 heap limits\nnode --max-old-space-size=4096 server.js",
+    "nodeCode": "// In Node.js, V8 heap limits are configured via CLI or NODE_OPTIONS:\n// export NODE_OPTIONS=\"--max-old-space-size=4096\"\nimport v8 from 'node:v8';\n\nconsole.log('V8 Heap Statistics:', v8.getHeapStatistics().heap_size_limit);",
     "why": "jemalloc reduces lock contention on multi-core servers, preventing performance degradation under heavy concurrency.",
     "code": "// Rust allows declaring a global allocator with a single line:\n// #[global_allocator]\n// static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;\n\nfn main() {\n    // Demonstration of high-frequency allocations\n    let mut data = Vec::new();\n    for i in 0..10_000 {\n        data.push(i);\n    }\n    println!(\"Allocated {} items with allocator\", data.len());\n}"
   },
@@ -383,7 +383,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 6: Systems Internals",
     "title": "Atomics & Hardware Memory Ordering",
     "desc": "Node.js has `Atomics` for SharedArrayBuffer across worker threads. Rust provides full hardware atomic primitives (`AtomicBool`, `AtomicUsize`) with precise memory orderings (Relaxed, Acquire, Release, SeqCst).",
-    "nodeCode": "// JS Atomics\nAtomics.add(typedArray, 0, 1);",
+    "nodeCode": "// SharedArrayBuffer and Atomics in Node.js\nconst sab = new SharedArrayBuffer(1024);\nconst typedArray = new Int32Array(sab);\n\nAtomics.add(typedArray, 0, 1);\nconsole.log(Atomics.load(typedArray, 0));",
     "why": "Atomic operations execute directly in CPU hardware without requiring operating system mutex locks.",
     "code": "use std::sync::atomic::{AtomicUsize, Ordering};\n\nfn main() {\n    let counter = AtomicUsize::new(0);\n\n    // Atomic fetch_add returns previous value\n    let prev = counter.fetch_add(1, Ordering::SeqCst);\n    println!(\"Previous: {}, Current: {}\", prev, counter.load(Ordering::SeqCst));\n\n    // Compare and swap (CAS) loop\n    let success = counter.compare_exchange(1, 10, Ordering::SeqCst, Ordering::Relaxed);\n    println!(\"CAS Result: {:?}, New value: {}\", success, counter.load(Ordering::SeqCst));\n}"
   },
@@ -392,7 +392,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 6: Systems Internals",
     "title": "Macros: Declarative vs Procedural Macros",
     "desc": "JavaScript uses Babel plugins or TypeScript decorators for meta-programming. Rust provides declarative macros (`macro_rules!`) and procedural macros (derive, attribute, function-like) that manipulate Rust AST tokens at compile time.",
-    "nodeCode": "// TypeScript Decorator\n@Entity()\nclass User { @Column() name: string; }",
+    "nodeCode": "import { Entity, Column } from 'typeorm';\n\n// TypeScript Decorator\n@Entity()\nclass User { @Column() name: string; }",
     "why": "Rust macros run strictly at compile time with zero runtime reflection overhead.",
     "code": "// Declarative macro for calculating operations\nmacro_rules! calculate {\n    (add $a:expr, $b:expr) => {\n        $a + $b\n    };\n    (mul $a:expr, $b:expr) => {\n        $a * $b\n    };\n}\n\nfn main() {\n    let sum = calculate!(add 10, 20);\n    let product = calculate!(mul 5, 4);\n    println!(\"Macro results: sum={}, product={}\", sum, product);\n}"
   },
@@ -419,7 +419,7 @@ export const chaptersData: Record<string, Chapter> = {
     "part": "Part 7: Rust Philosophy",
     "title": "RAII & Deterministic Resource Management",
     "desc": "JavaScript relies on garbage collection: you never know when memory will be reclaimed. Rust uses RAII (Resource Acquisition Is Initialization): when a variable goes out of scope, its `Drop` implementation executes immediately.",
-    "nodeCode": "// JS has no deterministic destructor (FinalizationRegistry is non-deterministic)\nconst fd = fs.openSync('file.txt'); // Must manually close or leak handle!",
+    "nodeCode": "import fs from 'node:fs';\n\n// Node.js has no deterministic destructor\nconst fd = fs.openSync('file.txt', 'r'); // Must manually close or leak handle!\nfs.closeSync(fd);",
     "why": "Deterministic cleanup eliminates resource leaks: file handles, network sockets, and database transactions close automatically.",
     "code": "struct FileHandle {\n    name: String,\n}\n\nimpl Drop for FileHandle {\n    fn drop(&mut self) {\n        println!(\"--> [RAII Drop]: File handle '{}' closed and flushed to disk.\", self.name);\n    }\n}\n\nfn main() {\n    println!(\"Opening resource in inner scope...\");\n    {\n        let _file = FileHandle { name: \"access.log\".to_string() };\n        println!(\"Using file inside scope...\");\n    } // Drop runs automatically right here!\n    println!(\"Scope closed.\");\n}"
   },
@@ -453,7 +453,7 @@ export const chaptersData: Record<string, Chapter> = {
   "lc_two_sum": {
     "num": "LC1",
     "part": "Part 8: LeetCode in Rust",
-    "title": "Two Sum (#1) \u2014 Zero-Allocation Map",
+    "title": "Two Sum (#1) — Zero-Allocation Map",
     "desc": "Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to target. Solved in Rust using `HashMap` in O(n) time.",
     "nodeCode": "// JS Two Sum\nfunction twoSum(nums, target) {\n  const map = new Map();\n  for (let i = 0; i < nums.length; i++) {\n    const complement = target - nums[i];\n    if (map.has(complement)) return [map.get(complement), i];\n    map.set(nums[i], i);\n  }\n}",
     "why": "Solve in O(n) time using HashMap lookup with explicit 0-based vector index returns.",
@@ -462,7 +462,7 @@ export const chaptersData: Record<string, Chapter> = {
   "lc_valid_parentheses": {
     "num": "LC20",
     "part": "Part 8: LeetCode in Rust",
-    "title": "Valid Parentheses (#20) \u2014 Vector Stack",
+    "title": "Valid Parentheses (#20) — Vector Stack",
     "desc": "Given a string `s` containing '(', ')', '{', '}', '[' and ']', determine if the input string is valid. Solved using `Vec<char>` as a fast LIFO stack.",
     "nodeCode": "// JS Valid Parentheses\nfunction isValid(s) {\n  const stack = [];\n  for (const c of s) {\n    if (c === '(') stack.push(')');\n    else if (stack.pop() !== c) return false;\n  }\n  return stack.length === 0;\n}",
     "why": "Rust's Vec functions as a cache-efficient LIFO stack with O(1) push and pop.",
@@ -489,7 +489,7 @@ export const chaptersData: Record<string, Chapter> = {
   "lc_valid_palindrome": {
     "num": "LC125",
     "part": "Part 8: LeetCode in Rust",
-    "title": "Valid Palindrome (#125) \u2014 Two Pointers",
+    "title": "Valid Palindrome (#125) — Two Pointers",
     "desc": "Verify if a string is a palindrome considering only alphanumeric characters and ignoring case. Solved in Rust using two pointers over an iterator with zero heap allocations.",
     "nodeCode": "// JS Valid Palindrome\nfunction isPalindrome(s) {\n  const clean = s.toLowerCase().replace(/[^a-z0-9]/g, '');\n  return clean === clean.split('').reverse().join('');\n}",
     "why": "Two-pointer in-place traversal avoids allocating new filtered strings.",
@@ -498,9 +498,9 @@ export const chaptersData: Record<string, Chapter> = {
   "lc_reverse_linked_list": {
     "num": "LC206",
     "part": "Part 8: LeetCode in Rust",
-    "title": "Reverse Linked List (#206) \u2014 Ownership Transfer",
+    "title": "Reverse Linked List (#206) — Ownership Transfer",
     "desc": "Reverse a singly linked list. In Rust, pointer reversal requires carefully moving node ownership between `prev` and `curr` without triggering use-after-move compiler errors.",
-    "nodeCode": "// JS Reverse Linked List\nlet prev = null, curr = head;\nwhile (curr) {\n  let next = curr.next;\n  curr.next = prev;\n  prev = curr;\n  curr = next;\n}",
+    "nodeCode": "interface ListNode { val: number; next: ListNode | null; }\n\nfunction reverseList(head: ListNode | null): ListNode | null {\n  let prev: ListNode | null = null;\n  let curr = head;\n  while (curr) {\n    const next = curr.next;\n    curr.next = prev;\n    prev = curr;\n    curr = next;\n  }\n  return prev;\n}",
     "why": "Mastering ownership transfer between pointers is the ultimate rite of passage for Rust developers.",
     "code": "#[derive(Debug)]\nstruct Node {\n    val: i32,\n    next: Option<Box<Node>>,\n}\n\nfn reverse_list(mut head: Option<Box<Node>>) -> Option<Box<Node>> {\n    let mut prev = None;\n    while let Some(mut current) = head {\n        head = current.next.take(); // Detach next link safely\n        current.next = prev;\n        prev = Some(current);\n    }\n    prev\n}\n\nfn main() {\n    let list = Some(Box::new(Node {\n        val: 1,\n        next: Some(Box::new(Node {\n            val: 2,\n            next: Some(Box::new(Node { val: 3, next: None })),\n        })),\n    }));\n\n    let reversed = reverse_list(list);\n    println!(\"Reversed list: {:?}\", reversed);\n}"
   },

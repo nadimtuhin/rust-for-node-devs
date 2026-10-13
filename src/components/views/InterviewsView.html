@@ -2,56 +2,106 @@
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #fee2e2; color: #b91c1c; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 08 • Career Preparation</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Senior Systems Interview Q&A</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Master the deep technical systems questions asked at Cloudflare, Discord, AWS, and Figma.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Memory layout, async, locking and unsafe questions that come up in senior Rust systems interviews, with answers grounded in the Rust docs.</p>
   </div>
+
+  <aside class="appendix-takeaways" aria-labelledby="takeaways-title">
+    <h2 id="takeaways-title">Key takeaways</h2>
+    <ul>
+      <li>On a 64-bit target, <code>String</code> is 24 bytes on the stack (pointer, capacity, length) and <code>&amp;str</code> is 16 bytes (pointer, length).</li>
+      <li><code>std::sync::MutexGuard</code> is <code>!Send</code>, so a future that holds it across <code>.await</code> cannot be passed to <code>tokio::spawn</code>.</li>
+      <li>Local variables are dropped in reverse declaration order, while struct fields are dropped in declaration order.</li>
+      <li><code>unsafe</code> does not disable the borrow checker; it only allows five extra operations, such as dereferencing raw pointers and calling unsafe functions.</li>
+      <li>Tokio's docs recommend <code>std::sync::Mutex</code> in async code for short critical sections, and <code>tokio::sync::Mutex</code> only when the guard must be held across <code>.await</code>.</li>
+    </ul>
+  </aside>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h3 style="margin-top: 0; color: #0f172a;">Q1: What is the exact difference between String and &amp;str in memory?</h3>
-    <p style="color: #475569; line-height: 1.6;"><code>String</code> is an owned, growable vector of UTF-8 bytes stored on the heap. On a 64-bit CPU, its stack footprint is 24 bytes (pointer to heap buffer, capacity, and current length). In contrast, <code>&amp;str</code> is a borrowed string slice consisting of only 16 bytes on the stack: a pointer to existing bytes and length. String slices can point to stack, heap, or static binary data (<code>.rodata</code>).</p>
+    <p style="color: #475569; line-height: 1.6;"><code>String</code> is an owned, growable buffer of UTF-8 bytes stored on the heap. On a 64-bit target its stack footprint is 24 bytes: a pointer to the heap buffer, the capacity, and the current length. <code>&amp;str</code> is a borrowed string slice of 16 bytes: a pointer to existing bytes and a length. A <code>&amp;str</code> can point into a <code>String</code>'s heap buffer, a stack array, or static data compiled into the binary (string literals are <code>&amp;'static str</code>).</p>
   </div>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h3 style="margin-top: 0; color: #0f172a;">Q2: Why does holding std::sync::MutexGuard across an .await point fail to compile?</h3>
-    <p style="color: #475569; line-height: 1.6;"><code>std::sync::MutexGuard</code> explicitly does <strong>not</strong> implement the <code>Send</code> trait because OS-level mutexes (e.g. pthread mutexes) require the unlocking thread to be the identical thread that acquired the lock. Tokio's multi-threaded work-stealing scheduler can yield a task on Thread A and resume it on Thread B. The compiler rejects this at compile time. The idiomatic fix is scoping the synchronous lock to drop before the await, or using message-passing channels.</p>
+    <h3 style="margin-top: 0; color: #0f172a;">Q2: Why does holding std::sync::MutexGuard across an .await point fail to compile with tokio::spawn?</h3>
+    <p style="color: #475569; line-height: 1.6;"><code>std::sync::MutexGuard</code> does <strong>not</strong> implement <code>Send</code>, because on some platforms (for example pthread mutexes) the lock must be released by the thread that acquired it. A future that holds the guard across <code>.await</code> stores it in its state, which makes the future <code>!Send</code>. <code>tokio::spawn</code> requires <code>Send</code> futures because the multi-threaded scheduler may resume a task on a different worker thread, so the compiler rejects it. The code compiles if the future is never required to be <code>Send</code>, but it can then deadlock. The idiomatic fix is to drop the guard before the <code>.await</code> by scoping it in a block, or to use <code>tokio::sync::Mutex</code> or message passing.</p>
   </div>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h3 style="margin-top: 0; color: #0f172a;">Q3: What is Pin&lt;&amp;mut T&gt; and why is it essential for async Rust?</h3>
-    <p style="color: #475569; line-height: 1.6;">Async functions compile into state machines. When a future holds references across an <code>.await</code> point, it becomes a <strong>self-referential struct</strong> (fields pointing to other fields inside the same struct). If moved in memory, internal pointers become dangling pointers! <code>Pin</code> wraps a pointer to guarantee the underlying data will never move in memory before being dropped.</p>
+    <p style="color: #475569; line-height: 1.6;">Async functions compile into state machines. When a local reference lives across an <code>.await</code> point, the state machine stores both the value and a reference to it, making it a <strong>self-referential struct</strong>. If it moved in memory after that, the stored reference would dangle. <code>Pin</code> wraps a pointer and guarantees that a value whose type is not <code>Unpin</code> will not move again until it is dropped, which is why <code>Future::poll</code> takes <code>self: Pin&lt;&amp;mut Self&gt;</code>.</p>
   </div>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h3 style="margin-top: 0; color: #0f172a; font-size: 1.15rem;">Q4: When should you choose <code>std::sync::Mutex</code> vs <code>tokio::sync::Mutex</code> vs <code>RwLock</code>?</h3>
     <p style="color: #475569; line-height: 1.6; font-size: 0.95rem;">
-      Use <strong><code>std::sync::Mutex</code></strong> for short, uncontended in-memory operations that never yield across <code>.await</code> points (it avoids async allocation overhead). Use <strong><code>tokio::sync::Mutex</code></strong> ONLY when the lock guard must be held across an <code>.await</code> boundary. Choose <strong><code>RwLock</code></strong> only when reads vastly exceed writes (&gt;90% reads) with non-trivial critical sections, otherwise the atomic state tracking overhead of <code>RwLock</code> will be slower than an uncontended Mutex.
+      Use <strong><code>std::sync::Mutex</code></strong> for short in-memory critical sections that do not cross an <code>.await</code>; Tokio's shared-state tutorial says it is fine and often preferred in async code. Use <strong><code>tokio::sync::Mutex</code></strong> when the guard must be held across an <code>.await</code>, for example around an I/O resource; it is slower because locking is itself an async operation with a fair queue. Choose <strong><code>RwLock</code></strong> when reads clearly dominate and critical sections are long enough for parallel readers to matter. It does more bookkeeping than a <code>Mutex</code>, so measure before switching.
     </p>
     <p style="color: #475569; line-height: 1.6; font-size: 0.95rem; margin-bottom: 0;">
-      Additionally, <code>std::sync::Mutex</code> and <code>std::sync::RwLock</code> implement <strong>Lock Poisoning</strong> (if a thread panics while holding the lock, subsequent calls return a <code>PoisonError</code> to protect against corrupt state), whereas <code>tokio::sync::Mutex</code> and <code>parking_lot::Mutex</code> intentionally do not poison on panic.
+      Additionally, <code>std::sync::Mutex</code> and <code>std::sync::RwLock</code> implement <strong>Lock Poisoning</strong>: if a thread panics while holding the lock, later calls return a <code>PoisonError</code> to warn about possibly corrupt state. <code>tokio::sync::Mutex</code> and <code>parking_lot::Mutex</code> do not poison on panic.
     </p>
   </div>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h3 style="margin-top: 0; color: #0f172a; font-size: 1.15rem;">Q5: What is Rust's precise RAII drop order for variables and struct fields?</h3>
     <p style="color: #475569; line-height: 1.6; font-size: 0.95rem;">
-      1. <strong>Local variables</strong> in a function scope are dropped in <em>reverse declaration order</em> (LIFO: last declared is dropped first).<br/>
-      2. <strong>Struct fields</strong> and tuple elements are dropped in <em>declaration order</em> (top-to-bottom: first field is dropped first).<br/>
-      3. Array and slice elements are dropped sequentially from index 0 to n-1.
+      1. <strong>Local variables</strong> in a scope are dropped in <em>reverse declaration order</em> (last declared is dropped first).<br/>
+      2. <strong>Struct fields</strong> and tuple elements are dropped in <em>declaration order</em> (first field is dropped first).<br/>
+      3. Array and owned slice elements are dropped from the first element to the last.<br/>
+      4. A temporary is dropped at the end of its enclosing statement, and <code>let _ = value;</code> does not bind, so a temporary on the right side is dropped immediately.
     </p>
   </div>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h3 style="margin-top: 0; color: #0f172a; font-size: 1.15rem;">Q6: What is a Fat Pointer in Rust and what are its memory dimensions?</h3>
     <p style="color: #475569; line-height: 1.6; font-size: 0.95rem;">
-      A regular reference (e.g. <code>&amp;i32</code> or <code>&amp;MyStruct</code>) is 1 word (8 bytes on 64-bit architecture) pointing directly to data. A <strong>Fat Pointer</strong> is 2 words (16 bytes) storing both a data pointer and runtime metadata:<br/>
-      • <strong>Slices (<code>&amp;[T]</code> or <code>&amp;str</code>)</strong>: <code>(data_ptr: *const T, len: usize)</code>.<br/>
-      • <strong>Trait Objects (<code>&amp;dyn Trait</code>)</strong>: <code>(data_ptr: *const (), vtable_ptr: *const ())</code>. The vtable contains the struct's size, alignment, destructor (drop glue), and function pointers for dynamic dispatch.
+      A reference to a sized type (e.g. <code>&amp;i32</code> or <code>&amp;MyStruct</code>) is 1 word (8 bytes on a 64-bit target) pointing directly to the data. A <strong>Fat Pointer</strong> to a dynamically sized type is 2 words (16 bytes): a data pointer plus metadata:<br/>
+      • <strong>Slices (<code>&amp;[T]</code> or <code>&amp;str</code>)</strong>: the data pointer and the element count.<br/>
+      • <strong>Trait Objects (<code>&amp;dyn Trait</code>)</strong>: the data pointer and a vtable pointer. The vtable holds the concrete type's size, alignment, drop glue, and the trait's method pointers. Its exact layout is not a stable, documented ABI.
     </p>
   </div>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h3 style="margin-top: 0; color: #0f172a; font-size: 1.15rem;">Q7: What is undefined behavior (UB) in Rust and does <code>unsafe</code> turn off the borrow checker?</h3>
     <p style="color: #475569; line-height: 1.6; font-size: 0.95rem;">
-      <strong>No!</strong> The <code>unsafe</code> block does NOT turn off type checking or the borrow checker. It only grants 5 specific superpowers: dereferencing raw pointers, calling unsafe functions/FFI, implementing unsafe traits, mutating mutable static variables, and accessing fields of a union. Violating aliasing rules (e.g., creating overlapping <code>&amp;mut</code> references) even inside <code>unsafe</code> triggers immediate Undefined Behavior, allowing LLVM optimizations to miscompile the binary.
+      <strong>No.</strong> An <code>unsafe</code> block does NOT turn off type checking or the borrow checker for references. The Rust Book lists five extra abilities it grants: dereferencing raw pointers, calling unsafe functions (including FFI), accessing or modifying mutable statics, implementing unsafe traits, and accessing fields of a union. Undefined behavior is any operation the language rules forbid, such as creating two live <code>&amp;mut</code> references to the same data. The compiler optimizes on the assumption that UB never happens, so code containing UB can be miscompiled in ways that are hard to predict.
     </p>
   </div>
+
+  <section class="appendix-faq" itemscope itemtype="https://schema.org/FAQPage" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <dl>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What is the difference between String and &amp;str in Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text"><code>String</code> owns a growable heap buffer of UTF-8 bytes and is 24 bytes on the stack on 64-bit targets. <code>&amp;str</code> is a borrowed view into UTF-8 bytes owned by something else and is 16 bytes. Take <code>&amp;str</code> as a function parameter when you only need to read text.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Should I use std::sync::Mutex or tokio::sync::Mutex in async Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Use <code>std::sync::Mutex</code> unless you must hold the lock across an <code>.await</code>. Tokio's own tutorial recommends the standard mutex for short critical sections because it is cheaper. Use <code>tokio::sync::Mutex</code> only when the guard has to live across an <code>.await</code>.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Does unsafe Rust disable the borrow checker?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">No. The borrow checker still checks all references inside an <code>unsafe</code> block. <code>unsafe</code> only allows five extra operations, including dereferencing raw pointers and calling unsafe functions, and you become responsible for upholding the rules the compiler cannot check for those operations.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">In what order does Rust drop variables and struct fields?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Local variables are dropped in reverse order of declaration when their scope ends. Struct fields, tuple elements and array elements are dropped in forward order. The Rust Reference chapter on destructors defines these rules.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Why do Rust futures need Pin?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">An async function's state machine can hold references to its own fields across <code>.await</code> points, so moving it after polling starts would leave those references dangling. <code>Pin</code> guarantees a non-<code>Unpin</code> value stays at one address until it is dropped, which is why <code>Future::poll</code> takes <code>Pin&lt;&amp;mut Self&gt;</code>.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="appendix-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title">Sources and further reading</h2>
+    <ol>
+      <li><a href="https://doc.rust-lang.org/std/sync/struct.MutexGuard.html" rel="noopener">std::sync::MutexGuard</a>: the <code>!Send</code> implementation discussed in Q2.</li>
+      <li><a href="https://tokio.rs/tokio/tutorial/shared-state" rel="noopener">Tokio tutorial: Shared state</a>: guidance on <code>std::sync::Mutex</code> versus <code>tokio::sync::Mutex</code>.</li>
+      <li><a href="https://docs.rs/tokio/latest/tokio/sync/struct.Mutex.html" rel="noopener">tokio::sync::Mutex (docs.rs)</a>: no poisoning and when the async mutex is appropriate.</li>
+      <li><a href="https://doc.rust-lang.org/reference/destructors.html" rel="noopener">The Rust Reference: Destructors</a>: drop order for variables, fields, elements and temporaries.</li>
+      <li><a href="https://doc.rust-lang.org/std/pin/index.html" rel="noopener">std::pin module docs</a>: the pinning guarantee used by futures.</li>
+      <li><a href="https://doc.rust-lang.org/book/ch20-01-unsafe-rust.html" rel="noopener">The Rust Book: Unsafe Rust</a>: the five unsafe superpowers.</li>
+    </ol>
+  </section>
 </div>

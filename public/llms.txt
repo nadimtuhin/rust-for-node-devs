@@ -1,0 +1,128 @@
+# Rust for Node.js Devs
+
+> An interactive, free curriculum that teaches Rust to Node.js and TypeScript developers by mapping every concept to its JavaScript equivalent: 56 side-by-side chapters with a live in-browser Rust compiler, plus 14 architecture appendices on the borrow checker, Tokio, Cargo, Axum microservices, Docker, testing, and interviews.
+
+Rust for Node.js Devs is a Rosetta Stone between the V8/libuv world and systems Rust. Each chapter shows the Node.js/TypeScript code a backend engineer already writes (Express handlers, Promise.all, pg.Pool, BullMQ, AbortController), then the idiomatic Rust equivalent (Axum, tokio::join!, sqlx::Pool, Redis Streams, CancellationToken), explains why Rust does it differently, and lists a pro tip, a common footgun, and an architecture note. Every Rust example can be edited in the browser and compiled and run through the official Rust Playground (play.rust-lang.org).
+
+The curriculum is organised in 9 parts: language basics (ownership, borrowing, lifetimes, Option/Result), web APIs with Axum and Tower, collections and smart pointers, databases (SQLx, SeaORM, MongoDB, Redis), queues and workers, async with Tokio, systems internals (SIMD, NAPI-RS, unsafe, FFI, allocators, atomics, macros), Rust philosophy, and LeetCode problems solved in idiomatic Rust.
+
+**Core concepts: Node.js vs Rust**
+
+| Concern | Node.js / TypeScript | Rust |
+|---|---|---|
+| Runtime | V8 JIT + libuv single-threaded event loop; CPU work blocks every request unless moved to worker_threads | Ahead-of-time native binary; Tokio multi-threaded work-stealing scheduler runs futures across all cores |
+| Concurrency model | Promises resolved on one thread; Promise.all / Promise.race | Lazy futures polled by an executor; tokio::join!, tokio::spawn, tokio::select! |
+| Memory management | Tracing garbage collector (Orinoco/Scavenger) with stop-the-world pauses and non-deterministic cleanup | Ownership + borrow checker at compile time; RAII frees memory and closes resources deterministically when the owner goes out of scope (Drop) |
+| Aliasing | Unlimited shared mutable references to any object | Aliasing XOR mutability: many &T or exactly one &mut T, enforced by the compiler, so data races cannot compile |
+| null / errors | null, undefined, thrown exceptions | Option<T> and Result<T, E>, propagated with ?; panics reserved for bugs |
+| Types | Structural, erased at runtime; any escapes | Nominal, checked at compile time; generics monomorphized to zero-cost code |
+| Thread safety | worker_threads isolates communicating via postMessage, or SharedArrayBuffer + Atomics with no compile-time race checks | Send / Sync marker traits let the compiler prove what can cross threads (Arc, Mutex, channels) |
+| Packages | npm, package.json, package-lock.json, node_modules | Cargo, Cargo.toml, Cargo.lock, crates.io, features |
+| Deploy artifact | Node runtime + node_modules (hundreds of MB) | Single native binary (dynamically linked to glibc by default); distroless/cc image under 20 MB, musl + scratch under 10 MB |
+
+Full text of every chapter and appendix, including code: https://rust-for-node-devs.vercel.app/llms-full.txt
+
+## Part 0: Language Basics
+
+- [B1. Variables, Immutability & let mut](https://rust-for-node-devs.vercel.app/chapter/basic_vars): JS let and const vs Rust let and let mut, with shadowing and type inference. Takeaway: mutation is opt-in, so every place state can change is visible in code.
+- [B2. Ownership & Move Semantics](https://rust-for-node-devs.vercel.app/chapter/basic_ownership): V8 garbage collection vs Rust ownership, moves and RAII. Takeaway: each heap value has one owner and is freed the moment it leaves scope, with no GC pause.
+- [B3. Borrowing & References (&T vs &mut T)](https://rust-for-node-devs.vercel.app/chapter/basic_borrowing): JS shared object references vs Rust borrowing with &T and &mut T. Takeaway: many readers or one writer, checked at compile time, so data races can't exist.
+- [B4. Structs, impl Blocks & Methods](https://rust-for-node-devs.vercel.app/chapter/basic_structs): ES6 classes and prototype chains vs Rust structs, impl blocks and &self methods. Takeaway: data layout lives apart from behavior, with no prototype lookups.
+- [B5. Algebraic Enums & Pattern Matching](https://rust-for-node-devs.vercel.app/chapter/basic_enums): TypeScript discriminated unions vs Rust algebraic enums and exhaustive match. Takeaway: each variant carries its own payload; unhandled cases fail to compile.
+- [B6. Option<T> — Banishing null & undefined](https://rust-for-node-devs.vercel.app/chapter/basic_option): JS null, undefined and optional chaining vs Rust Option<T> with Some and None. Takeaway: absence is a type, so a null pointer exception becomes a compile error.
+- [B7. Result<T, E> & the '?' Operator](https://rust-for-node-devs.vercel.app/chapter/basic_result): Node.js try/catch and rejected Promises vs Rust Result<T, E> and the ? operator. Takeaway: errors are plain values, so every failure path shows up in the types.
+- [B8. Traits & Explicit Contracts](https://rust-for-node-devs.vercel.app/chapter/basic_traits): TypeScript structural interfaces and duck typing vs Rust traits with explicit impl. Takeaway: opt-in contracts enable zero-cost static dispatch in generics.
+- [B9. Generics & Monomorphization](https://rust-for-node-devs.vercel.app/chapter/basic_generics): Erased TypeScript generics vs Rust monomorphized generics with trait bounds. Takeaway: the compiler emits code per concrete type, so abstraction costs nothing.
+- [B10. Lifetimes Explained for JS Devs](https://rust-for-node-devs.vercel.app/chapter/basic_lifetimes): V8 keeps objects alive while referenced; Rust lifetimes prove no reference outlives its data. Takeaway: use-after-free is a compile error, with no GC needed.
+
+## Part 1: Web APIs & Axum
+
+- [1. Express.js vs Axum Routing & Handlers](https://rust-for-node-devs.vercel.app/chapter/axum_api): Express routes and req/res handlers vs Axum routers and typed extractors (Json, Path, Query). Takeaway: bad requests are rejected before your handler runs.
+- [2. Shared State with Arc<T> vs Global Singletons](https://rust-for-node-devs.vercel.app/chapter/state_singleton): Node.js module singletons on one event loop thread vs Rust Arc<T> and Axum State across threads. Takeaway: shared state must prove it is thread-safe to compile.
+- [3. Tower Middleware vs Express Middleware](https://rust-for-node-devs.vercel.app/chapter/tower_middleware): Express (req, res, next) middleware vs Tower Layer and Service in Axum. Takeaway: middleware is a typed service wrapper reusable across HTTP, gRPC and TCP.
+- [4. HTTP Client: fetch / axios vs reqwest](https://rust-for-node-devs.vercel.app/chapter/reqwest_client): Node.js fetch and axios vs Rust reqwest with pooling, timeouts and serde JSON. Takeaway: build one Client and reuse it to keep connections and TLS warm.
+- [5. JSON Parsing: JSON.parse() vs Serde](https://rust-for-node-devs.vercel.app/chapter/serde_json): JSON.parse plus Zod runtime validation vs Serde derive into typed Rust structs. Takeaway: parsing is validation, and serde codegen needs no runtime reflection.
+- [6. Environment Variables & Configuration](https://rust-for-node-devs.vercel.app/chapter/env_config): Node.js process.env strings vs Rust dotenvy and typed config structs parsed at boot. Takeaway: fail fast at startup so a bad config never serves live traffic.
+
+## Part 2: Collections & Data
+
+- [7. Array.map / filter / reduce vs Vec Iterators](https://rust-for-node-devs.vercel.app/chapter/vec_transform): JS Array map, filter and reduce vs Rust lazy Iterator chains over Vec. Takeaway: adapters fuse into one loop with no temp arrays, and only collect() allocates.
+- [8. Map & Set vs HashMap & HashSet](https://rust-for-node-devs.vercel.app/chapter/hashmap_set): JavaScript Map and Set vs Rust HashMap, HashSet and the Entry API. Takeaway: entry() does insert-or-update in one lookup, and the hasher is swappable.
+- [9. String vs &str & Slices Explained](https://rust-for-node-devs.vercel.app/chapter/slices_strings): Immutable UTF-16 JS strings vs Rust owned String and borrowed UTF-8 &str slices. Takeaway: slices view existing memory without copying, so parsing is cheap.
+- [10. Smart Pointers: Box, Rc, Arc & RefCell](https://rust-for-node-devs.vercel.app/chapter/smart_pointers): V8 garbage-collected heap vs Rust smart pointers Box, Rc, Arc and RefCell. Takeaway: you choose heap allocation and sharing explicitly, paying only for use.
+- [11. Interior Mutability: Cell, RefCell, Mutex & RwLock](https://rust-for-node-devs.vercel.app/chapter/interior_mutability): Mutating a const JS object vs Rust interior mutability with Mutex, RwLock and Cell. Takeaway: the lock owns the data, so you can't touch it without the guard.
+- [12. Struct Memory Layout, Alignment & Padding](https://rust-for-node-devs.vercel.app/chapter/memory_alignment): V8 hidden classes and boxed fields vs Rust struct layout, alignment and padding. Takeaway: #[repr(C)] keeps field order; default repr lets rustc reorder.
+
+## Part 3: Databases & SQL
+
+- [13. Prisma / TypeORM vs SQLx Compile-Time SQL](https://rust-for-node-devs.vercel.app/chapter/sqlx_compile_time): Prisma and TypeORM runtime queries vs SQLx query! macros checked against your database at build time. Takeaway: a SQL typo or wrong column fails the build.
+- [14. Connection Pools: pg.Pool vs sqlx::Pool](https://rust-for-node-devs.vercel.app/chapter/db_pool): Node.js pg.Pool on the libuv loop vs Rust sqlx::Pool across Tokio worker threads. Takeaway: size the pool and set acquire timeouts to avoid starvation.
+- [15. Transactions & RAII Rollback](https://rust-for-node-devs.vercel.app/chapter/db_transactions): Node.js try/catch with manual ROLLBACK vs SQLx Transaction rolling back on Drop via RAII. Takeaway: skip commit or panic midway and the data stays consistent.
+- [16. Redis Caching & Cache Stampede Protection](https://rust-for-node-devs.vercel.app/chapter/redis_caching): Node.js ioredis cache-aside vs Rust redis-rs MultiplexedConnection plus single-flight loading. Takeaway: when a hot key expires, N requests should cause one DB load.
+- [17. SeaORM & ActiveModel vs TypeORM](https://rust-for-node-devs.vercel.app/chapter/seaorm_patterns): TypeORM entities and repositories vs SeaORM ActiveModel, relations and migrations on SQLx. Takeaway: keep an ORM workflow with type-checked joins and queries.
+- [18. MongoDB: Mongoose vs official mongodb crate](https://rust-for-node-devs.vercel.app/chapter/mongodb_driver): Mongoose schemas and hooks vs the Rust mongodb crate with Serde BSON and typed Collection<T>. Takeaway: your Rust struct is the schema, checked on every decode.
+
+## Part 4: Queues & Workers
+
+- [19. BullMQ vs Redis Streams in Rust](https://rust-for-node-devs.vercel.app/chapter/redis_queues): BullMQ queues and Lua scripts vs Rust Redis Streams consumer groups (XREADGROUP, XACK). Takeaway: ack after work for at-least-once delivery across workers.
+- [20. Exponential Backoff & Dead-Letter Queues](https://rust-for-node-devs.vercel.app/chapter/job_retries): BullMQ attempts and backoff vs Rust retry loops with exponential backoff, jitter and a dead-letter queue. Takeaway: jitter stops thundering herds on recovery.
+
+## Part 5: Async & Tokio
+
+- [21. Promise.all vs tokio::join! & tokio::spawn](https://rust-for-node-devs.vercel.app/chapter/tokio_spawn): Promise.all on the libuv loop vs tokio::join! and tokio::spawn on a work-stealing runtime. Takeaway: join! is concurrent; spawn spreads tasks over all cores.
+- [22. Promise.race vs tokio::select!](https://rust-for-node-devs.vercel.app/chapter/select_race): Promise.race and timeouts in Node.js vs tokio::select! over futures, channels and timers. Takeaway: losing branches are dropped and cancelled, not left running.
+- [23. AbortController vs CancellationToken](https://rust-for-node-devs.vercel.app/chapter/cancellation_tokens): Node.js AbortController and AbortSignal vs tokio_util CancellationToken with child tokens. Takeaway: cancel a whole task tree cooperatively on shutdown.
+- [24. Error Architecture: anyhow vs thiserror](https://rust-for-node-devs.vercel.app/chapter/error_anyhow_thiserror): Node.js Error subclasses vs Rust thiserror enums for libraries and anyhow context for apps. Takeaway: typed errors at boundaries, rich diagnostics at the edges.
+- [25. Channels: mpsc, broadcast, watch & oneshot](https://rust-for-node-devs.vercel.app/chapter/channels_sync): Node.js EventEmitter and postMessage vs Tokio mpsc, broadcast, watch and oneshot channels. Takeaway: share by communicating; bounded channels add backpressure.
+- [26. Graceful Shutdown & OS Signal Handling](https://rust-for-node-devs.vercel.app/chapter/graceful_shutdown): Node.js process.on('SIGTERM') vs Axum with_graceful_shutdown and tokio::signal. Takeaway: drain in-flight requests so Kubernetes rollouts drop zero traffic.
+
+## Part 6: Systems Internals
+
+- [27. SIMD Vectorization & Zero-Cost Abstractions](https://rust-for-node-devs.vercel.app/chapter/simd_optimization): No SIMD in plain JS vs Rust LLVM auto-vectorization, std::arch AVX2 intrinsics and runtime CPU detection. Takeaway: 4 to 8 f32 lanes per instruction, safely.
+- [28. NAPI-RS: Accelerating Node.js with Rust](https://rust-for-node-devs.vercel.app/chapter/napi_rs): Node.js CPU hot paths and worker_threads vs NAPI-RS native addons in Rust. Takeaway: rewrite only the slow function, ship it via npm and keep your Node app.
+- [29. Unsafe Rust: When & How to Use It](https://rust-for-node-devs.vercel.app/chapter/unsafe_rust): Node.js C++ addons with no guardrails vs Rust unsafe blocks and their five superpowers. Takeaway: the borrow checker stays on; the audit shrinks to a few lines.
+- [30. FFI: Calling C Libraries from Rust](https://rust-for-node-devs.vercel.app/chapter/foreign_function_interface): Node.js node-gyp and koffi bindings vs Rust FFI with extern "C" and bindgen. Takeaway: call C libraries like SQLite or OpenSSL, with minimal marshalling.
+- [31. Custom Allocators: jemalloc & mimalloc](https://rust-for-node-devs.vercel.app/chapter/custom_allocators): V8's garbage-collected heap vs Rust #[global_allocator] with jemalloc or mimalloc. Takeaway: a one-line swap that can cut fragmentation; measure RSS first.
+- [32. Atomics & Hardware Memory Ordering](https://rust-for-node-devs.vercel.app/chapter/atomics_memory_ordering): JS Atomics on SharedArrayBuffer in worker_threads vs Rust AtomicUsize with Relaxed, Acquire and Release ordering. Takeaway: lock-free counters, no OS mutex.
+- [33. Macros: Declarative vs Procedural Macros](https://rust-for-node-devs.vercel.app/chapter/procedural_macros): TS decorators and Babel/SWC plugins vs Rust macro_rules! and derive, attribute and function-like proc macros. Takeaway: compile-time codegen, no reflection.
+- [34. Compile-Time Computation with const fn](https://rust-for-node-devs.vercel.app/chapter/const_eval): JS lookup tables built on every startup vs Rust const fn and statics evaluated by rustc into .rodata. Takeaway: bake tables and checks into the binary at build time.
+
+## Part 7: Rust Philosophy
+
+- [P1. Fearless Concurrency & Send / Sync](https://rust-for-node-devs.vercel.app/chapter/philo_fearless_concurrency): Node.js isolates, worker_threads and SharedArrayBuffer vs Rust Send and Sync auto traits. Takeaway: code with a data race never compiles.
+- [P2. RAII & Deterministic Resource Management](https://rust-for-node-devs.vercel.app/chapter/philo_raii_drop): V8 garbage collection, FinalizationRegistry and `using` vs Rust RAII and Drop. Takeaway: resources are freed at a known line.
+- [P3. The Zero-Cost Abstraction Principle](https://rust-for-node-devs.vercel.app/chapter/philo_zero_cost): V8 JIT speculation, deopts and closure allocations vs Rust monomorphized generics, closures and iterators. Takeaway: abstractions compile to the hand-written loop.
+- [P4. Make Illegal States Unrepresentable](https://rust-for-node-devs.vercel.app/chapter/philo_type_driven): TypeScript discriminated unions and branded types vs Rust typestate, PhantomData and parse-don't-validate newtypes. Takeaway: invalid states can't be constructed.
+- [P5. Explicit Over Implicit](https://rust-for-node-devs.vercel.app/chapter/philo_explicit_over_implicit): JS implicit coercion, hidden throws and eager promises vs Rust From/TryFrom, as casts, Result with ? and lazy futures. Takeaway: every conversion is visible.
+
+## Part 8: LeetCode in Rust
+
+- [LC1. Two Sum (#1) — Single-Pass HashMap](https://rust-for-node-devs.vercel.app/chapter/lc_two_sum): LeetCode Two Sum in JavaScript with a Map vs Rust with HashMap and enumerate. Takeaway: one O(n) pass storing value to index, then return the matching pair.
+- [LC20. Valid Parentheses (#20) — Vector Stack](https://rust-for-node-devs.vercel.app/chapter/lc_valid_parentheses): LeetCode Valid Parentheses with a JS array stack vs a Rust Vec<u8> over string bytes. Takeaway: brackets are ASCII, so scan bytes; Vec is an O(1) LIFO stack.
+- [LC21. Merge Two Sorted Lists (#21)](https://rust-for-node-devs.vercel.app/chapter/lc_merge_lists): LeetCode Merge Two Sorted Lists with JS object nodes vs Rust Option<Box<ListNode>>, take() and a tail cursor. Takeaway: move nodes into place, no clones.
+- [LC121. Best Time to Buy & Sell Stock (#121)](https://rust-for-node-devs.vercel.app/chapter/lc_buy_sell_stock): LeetCode Buy and Sell Stock with a JS for...of loop vs one Rust pass over a Vec<i32> or a fold. Takeaway: track the minimum price greedily, O(n) time, O(1) space.
+- [LC125. Valid Palindrome (#125) — Two Pointers](https://rust-for-node-devs.vercel.app/chapter/lc_valid_palindrome): LeetCode Valid Palindrome in JS (charCodeAt two pointers vs regex) and Rust over bytes or chars. Takeaway: scan bytes for ASCII, chars for Unicode.
+- [LC206. Reverse Linked List (#206) — Ownership Transfer](https://rust-for-node-devs.vercel.app/chapter/lc_reverse_linked_list): LeetCode Reverse Linked List with JS pointer swaps vs Rust Option<Box<ListNode>> and take(). Takeaway: nodes move, nothing is copied.
+- [LC53. Maximum Subarray (#53) — Kadane's Algorithm](https://rust-for-node-devs.vercel.app/chapter/lc_max_subarray): LeetCode Maximum Subarray in TypeScript vs Rust: Kadane's algorithm on a slice, plus an Option span variant. Takeaway: extend or restart, O(n) time, O(1) space.
+
+## Architecture Appendices
+
+- [Appendix 1: Borrow Checker Mastery](https://rust-for-node-devs.vercel.app/borrow-checker): Mental models and visual guide to Rust's Borrow Checker, Aliasing XOR Mutability, and Non-Lexical Lifetimes for JavaScript developers.
+- [Appendix 2: Async Rust & Tokio Runtime](https://rust-for-node-devs.vercel.app/async-tokio): Exhaustive architectural comparison between the Node.js libuv Event Loop and Tokio's multi-threaded work-stealing scheduler.
+- [Appendix 3: Cargo vs npm Architecture Guide](https://rust-for-node-devs.vercel.app/cargo-vs-npm): Deep dive comparing Cargo.toml & Cargo.lock against package.json & package-lock.json.
+- [Appendix 4: Production Axum Microservice](https://rust-for-node-devs.vercel.app/microservice): Full side-by-side comparison of an Express/Mongoose microservice re-architected in Axum and SQLx.
+- [Appendix 5: Production Distroless Rust Dockerfile](https://rust-for-node-devs.vercel.app/docker): Ultra-compact multi-stage Docker build producing standalone binaries under 15MB.
+- [Appendix 6: Testing & Mocking in Rust](https://rust-for-node-devs.vercel.app/testing): Unit tests, integration tests, mockall crate, and cargo test comparisons with Jest and Vitest.
+- [Appendix 7: AI & Autonomous Agents in Rust](https://rust-for-node-devs.vercel.app/ai-agents): Building high-throughput LLM tool callers, token streamers, and local inference pipelines in Rust with rig-core and candle.
+- [Appendix 8: Senior Rust Interview Q&A](https://rust-for-node-devs.vercel.app/interviews): High-frequency senior systems engineering interview questions covering memory layout, Tokio internals, and borrow checker subtleties.
+- [Appendix 9: Diagnostics, Profiling & Valgrind](https://rust-for-node-devs.vercel.app/troubleshooting): Playbooks for debugging compiler errors, profiling CPU with cargo-flamegraph, and detecting leaks with Miri.
+- [Appendix 10: The Rust Philosophy](https://rust-for-node-devs.vercel.app/philosophy): The fundamental philosophical principles of Rust explained for JavaScript and TypeScript engineers.
+- [Appendix 11: Top 10 Rust Pitfalls & Footguns](https://rust-for-node-devs.vercel.app/pitfalls): The top gotchas where JavaScript intuition fails: clone overuse, blocking async workers, lock poisoning, Pin mechanics, and unbuffered I/O.
+- [Appendix 12: LeetCode Easy in Rust](https://rust-for-node-devs.vercel.app/leetcode): Classic data structures and algorithms solved with zero-allocation Rust patterns vs JavaScript objects.
+- [Appendix 13: Rosetta Stone Cheatsheet](https://rust-for-node-devs.vercel.app/cheatsheet): Syntax and idiom quick lookup comparing JavaScript/TypeScript with Rust.
+- [Appendix 14: Rust Developer Roadmap (roadmap.sh)](https://rust-for-node-devs.vercel.app/roadmap): Interactive, step-by-step Rust developer learning path aligned with roadmap.sh/rust, mapped directly to Node.js / TypeScript engineering concepts.
+
+## Optional
+
+- [Curriculum index](https://rust-for-node-devs.vercel.app/chapters): All 56 chapters on one page
+- [Home and live playground](https://rust-for-node-devs.vercel.app/): Interactive studio with the in-browser Rust compiler

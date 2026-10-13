@@ -2,11 +2,13 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import ViewComponent from '../components/views/TroubleshootingView.astro';
+import FoundationalLessons from '../components/FoundationalLessons.astro';
 ---
 
 <Layout title="Diagnostics, Profiling & Valgrind | Rust for Node Devs" description="Playbooks for debugging compiler errors, profiling CPU with cargo-flamegraph, and detecting leaks with Miri.">
   <Header />
   <main id="main-content" role="main" style="min-height: calc(100vh - 54px); overflow-y: auto;">
     <ViewComponent />
+    <FoundationalLessons appendixSlug="troubleshooting" />
   </main>
 </Layout>

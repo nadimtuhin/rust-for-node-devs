@@ -6,12 +6,14 @@
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
+    "prebuild": "node scripts/generate-llms.mjs",
     "build": "astro build",
     "preview": "astro preview",
     "test:e2e": "playwright test",
     "astro": "astro"
   },
   "dependencies": {
+    "@astrojs/sitemap": "^3.7.4",
     "astro": "^5.4.2"
   },
   "devDependencies": {

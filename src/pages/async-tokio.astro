@@ -2,11 +2,13 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import ViewComponent from '../components/views/AsyncTokioView.astro';
+import FoundationalLessons from '../components/FoundationalLessons.astro';
 ---
 
 <Layout title="Async Rust & Tokio Runtime | Rust for Node Devs" description="Exhaustive architectural comparison between the Node.js libuv Event Loop and Tokio's multi-threaded work-stealing scheduler.">
   <Header />
   <main id="main-content" role="main" style="min-height: calc(100vh - 54px); overflow-y: auto;">
     <ViewComponent />
+    <FoundationalLessons appendixSlug="async-tokio" />
   </main>
 </Layout>

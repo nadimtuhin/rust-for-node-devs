@@ -2,6 +2,7 @@
 interface Props {
   title?: string;
   description?: string;
+  heading?: string;
   canonicalPath?: string;
   breadcrumbs?: { name: string; item: string }[];
   includeEditor?: boolean;
@@ -10,6 +11,7 @@ interface Props {
 const {
   title = "Rust for Node.js Devs | Interactive GitBook & Live Compiler",
   description = "Learn Rust with live in-browser Rust Playground compiler, progressive lessons, side-by-side Node.js/TypeScript comparisons, and production systems architecture guides.",
+  heading,
   canonicalPath = Astro.url.pathname,
   breadcrumbs = [],
   includeEditor = true
@@ -22,10 +24,22 @@ const cleanPath = canonicalPath.replace(/\/+$/, '') || '';
 const canonicalUrl = `${siteOrigin}${cleanPath}`;
 const ogImageUrl = `${siteOrigin}/og-image.png`;
 const ogImageAlt = "Rust for Node.js Developers - Interactive Masterclass Studio";
+const themeColor = "#b7410e";
+const author = { "@type": "Person", "@id": `${siteOrigin}/#author`, "name": "Nadim Tuhin", "url": "https://github.com/nadimtuhin" };
+// 56 lessons at ~30 min each with their live-compiler exercises, plus the 14 appendices.
+const courseWorkload = "PT35H";
+
+// Every page except the home page and the curriculum index is either a lesson or an appendix.
+const curriculumPath = "/chapters";
+const isLesson = cleanPath.startsWith('/chapter/');
+const isAppendix = !isLesson && cleanPath !== '' && cleanPath !== curriculumPath;
+const isArticle = isLesson || isAppendix;
+const pageHeading = heading ?? title.split('|')[0].trim();
 
 const defaultBreadcrumbs = [
   { name: "Home", item: siteOrigin },
-  ...(cleanPath ? [{ name: title.split('|')[0].trim(), item: canonicalUrl }] : [])
+  ...(isArticle ? [{ name: "Curriculum", item: `${siteOrigin}${curriculumPath}` }] : []),
+  ...(cleanPath ? [{ name: pageHeading, item: canonicalUrl }] : [])
 ];
 const activeBreadcrumbs = breadcrumbs.length > 0 ? breadcrumbs : defaultBreadcrumbs;
 
@@ -37,40 +51,64 @@ const graphNodes: any[] = [
     "name": "Rust for Node.js Developers Masterclass Studio",
     "description": "Interactive Rust learning platform and Rosetta Stone for Node.js and TypeScript developers.",
     "inLanguage": "en-US",
-    "publisher": {
-      "@type": "Person",
-      "name": "Nadim Tuhin",
-      "url": "https://github.com/nadimtuhin"
-    }
+    "publisher": author
   },
   {
     "@type": "Course",
     "@id": `${siteOrigin}/#course`,
     "name": "Rust for Node.js & TypeScript Developers",
     "description": "Comprehensive transition guide from single-threaded V8 JavaScript to fearless concurrency, memory safety without GC, and high-performance systems programming in Rust.",
-    "provider": {
-      "@type": "Person",
-      "name": "Nadim Tuhin",
-      "sameAs": "https://github.com/nadimtuhin"
+    "url": `${siteOrigin}${curriculumPath}`,
+    "inLanguage": "en-US",
+    "isAccessibleForFree": true,
+    "educationalLevel": "Intermediate",
+    "teaches": ["Rust ownership and borrowing", "Async Rust with Tokio", "Cargo and crates", "Production Rust web services"],
+    "coursePrerequisites": "Working knowledge of JavaScript or TypeScript on Node.js",
+    "image": ogImageUrl,
+    "timeRequired": courseWorkload,
+    "provider": author,
+    "publisher": author,
+    "offers": {
+      "@type": "Offer",
+      "category": "Free",
+      "price": 0,
+      "priceCurrency": "USD"
+    },
+    "hasCourseInstance": {
+      "@type": "CourseInstance",
+      "courseMode": "Online",
+      "courseWorkload": courseWorkload,
+      "instructor": author
     }
   }
 ];
 
-if (cleanPath.startsWith('/chapter/')) {
+if (isArticle) {
   graphNodes.push({
-    "@type": "LearningResource",
-    "@id": `${canonicalUrl}/#lesson`,
+    "@type": isLesson ? ["TechArticle", "LearningResource"] : "TechArticle",
+    "@id": `${canonicalUrl}#article`,
+    "headline": pageHeading,
     "name": title,
     "description": description,
-    "learningResourceType": "Interactive Tutorial",
-    "isPartOf": { "@id": `${siteOrigin}/#course` }
+    "url": canonicalUrl,
+    "image": ogImageUrl,
+    "inLanguage": "en-US",
+    "author": author,
+    "publisher": author,
+    "mainEntityOfPage": canonicalUrl,
+    "isPartOf": { "@id": `${siteOrigin}/#course` },
+    ...(isLesson && {
+      "learningResourceType": "Interactive Tutorial",
+      "educationalLevel": "Intermediate",
+      "isAccessibleForFree": true
+    })
   });
 }
 
 if (activeBreadcrumbs.length > 1) {
   graphNodes.push({
     "@type": "BreadcrumbList",
-    "@id": `${canonicalUrl}/#breadcrumbs`,
+    "@id": `${canonicalUrl}#breadcrumbs`,
     "itemListElement": activeBreadcrumbs.map((bc, idx) => ({
       "@type": "ListItem",
       "position": idx + 1,
@@ -93,10 +131,18 @@ const structuredData = {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    <meta name="author" content="Nadim Tuhin" />
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+    <meta name="theme-color" content={themeColor} />
     <link rel="canonical" href={canonicalUrl} />
+    <link rel="alternate" hreflang="en" href={canonicalUrl} />
+    <link rel="alternate" hreflang="x-default" href={canonicalUrl} />
+    <link rel="alternate" type="text/plain" href="/llms.txt" title="LLM-readable course index" />
+    <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
 
     <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={isArticle ? "article" : "website"} />
+    <meta property="og:locale" content="en_US" />
     <meta property="og:site_name" content="Rust for Node.js Developers" />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:title" content={title} />
@@ -138,6 +184,17 @@ const structuredData = {
   </head>
   <body>
     <a href="#main-content" class="skip-to-content">Skip to content</a>
+    {activeBreadcrumbs.length > 1 && (
+      <nav aria-label="Breadcrumb" class="sr-only">
+        <ol>
+          {activeBreadcrumbs.map((bc, idx) => (
+            <li>
+              <a href={bc.item} aria-current={idx === activeBreadcrumbs.length - 1 ? "page" : undefined}>{bc.name}</a>
+            </li>
+          ))}
+        </ol>
+      </nav>
+    )}
     <slot />
   </body>
 </html>

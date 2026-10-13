@@ -6,16 +6,27 @@
     </div>
     <h1 style="font-size: 2.4rem; font-weight: 800; margin: 0.5rem 0; color: #0f172a; letter-spacing: -0.02em;">Rust Developer Roadmap</h1>
     <p style="font-size: 1.15rem; color: #64748b; max-width: 780px; margin: 0 auto; line-height: 1.6;">
-      The definitive step-by-step curriculum aligned with <a href="https://roadmap.sh/rust" target="_blank" rel="noopener noreferrer" style="color: #c2410c; font-weight: 600; text-decoration: underline;">roadmap.sh/rust</a>, translated specifically into concrete systems models for JavaScript & TypeScript engineers.
+      A step-by-step curriculum that follows the topics of <a href="https://roadmap.sh/rust" target="_blank" rel="noopener noreferrer" style="color: #c2410c; font-weight: 600; text-decoration: underline;">roadmap.sh/rust</a>, mapped to chapters written for JavaScript &amp; TypeScript engineers.
     </p>
   </div>
+
+  <aside class="appendix-takeaways" aria-labelledby="takeaways-title">
+    <h2 id="takeaways-title">Key takeaways</h2>
+    <ul>
+      <li>A practical Rust learning order for Node.js developers is: toolchain, ownership and borrowing, enums and error handling, traits and generics, async with Tokio, then web services.</li>
+      <li><code>rustup</code> replaces <code>nvm</code> for managing toolchains, and <code>cargo</code> replaces both <code>npm</code> and your build scripts.</li>
+      <li>Ownership and borrowing come second because every later stage depends on them: Rust frees memory at points the compiler knows, instead of using a garbage collector.</li>
+      <li>Rust replaces <code>null</code> and exceptions with <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code>, so missing values and errors show up in function signatures.</li>
+      <li>A common Rust web stack is Axum 0.8 on Tokio, SQLx or SeaORM for the database, Serde for JSON, and a multi-stage Docker build.</li>
+    </ul>
+  </aside>
 
   <!-- Interactive / Progress Visualizer Bar -->
   <div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #f8fafc; border-radius: 12px; padding: 1.75rem 2rem; margin-bottom: 2.5rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
     <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem;">
       <div>
         <h3 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: #fbbf24;">🗺️ roadmap.sh/rust Milestone Path</h3>
-        <p style="margin: 0.25rem 0 0; color: #94a3b8; font-size: 0.9rem;">From V8 runtime mental models to zero-cost, bare-metal Rust mastery.</p>
+        <p style="margin: 0.25rem 0 0; color: #94a3b8; font-size: 0.9rem;">From Node.js mental models to production Rust services, in six stages.</p>
       </div>
       <a href="https://roadmap.sh/rust" target="_blank" rel="noopener noreferrer" style="display: inline-flex; align-items: center; gap: 0.4rem; background: #c2410c; color: #fff; padding: 0.5rem 1rem; border-radius: 6px; font-size: 0.85rem; font-weight: 600; text-decoration: none;">
         View on roadmap.sh ↗
@@ -53,10 +64,10 @@
           <span style="background: #e0f2fe; color: #0284c7; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: 800;">01</span>
           Toolchain, Installation & Cargo Essentials
         </h2>
-        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">roadmap.sh Milestone: Setup</span>
+        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Stage 1 of 6</span>
       </div>
       <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.25rem;">
-        In the Node.js universe, version managers like <code>nvm</code> or <code>fnm</code> manage Node runtimes while <code>npm</code>/<code>pnpm</code> handle package dependencies. In Rust, <code>rustup</code> is the unified toolchain manager that installs <code>rustc</code>, <code>cargo</code>, <code>rust-analyzer</code>, and cross-compilation targets.
+        In the Node.js universe, version managers like <code>nvm</code> or <code>fnm</code> manage Node runtimes while <code>npm</code>/<code>pnpm</code> handle package dependencies. In Rust, <code>rustup</code> manages toolchains (stable, beta, nightly), components and cross-compilation targets, and <code>cargo</code> is both the build tool and the package manager. The default rustup profile installs <code>rustc</code>, <code>cargo</code>, <code>rust-std</code>, <code>rust-docs</code>, <code>rustfmt</code> and <code>clippy</code>; add the language server with <code>rustup component add rust-analyzer</code>.
       </p>
       
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
@@ -64,8 +75,9 @@
           <h4 style="margin: 0 0 0.5rem; color: #0f172a; font-size: 0.95rem;">Key Roadmap Concepts</h4>
           <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #334155; line-height: 1.6;">
             <li><code>rustup</code>: Toolchain channels (stable, beta, nightly)</li>
-            <li><code>cargo init</code>, <code>cargo build</code>, <code>cargo check</code></li>
-            <li><code>rust-analyzer</code> language server configuration</li>
+            <li><code>cargo new</code>, <code>cargo build</code>, <code>cargo check</code>, <code>cargo run</code>, <code>cargo test</code></li>
+            <li><code>cargo fmt</code> and <code>cargo clippy</code> (the Prettier and ESLint equivalents)</li>
+            <li><code>rust-analyzer</code> language server (<code>rustup component add rust-analyzer</code>)</li>
             <li>Playground vs Native compilation</li>
           </ul>
         </div>
@@ -87,10 +99,10 @@
           <span style="background: #fee2e2; color: #dc2626; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: 800;">02</span>
           Memory Management, Ownership & Borrowing
         </h2>
-        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">roadmap.sh Milestone: Core Philosophy</span>
+        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Stage 2 of 6</span>
       </div>
       <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.25rem;">
-        Node.js developers rely on V8's Mark-and-Sweep Garbage Collector (Orinoco/Scavenger) to reclaim unreferenced heap allocations. Rust eliminates GC runtime pauses through compile-time Affine Types and RAII (Resource Acquisition Is Initialization), where memory is deterministically dropped when its single owning variable exits scope.
+        Node.js developers rely on V8's generational garbage collector (a Scavenger for young objects and Mark-Compact for old ones, both part of V8's Orinoco project) to reclaim unreachable objects. Rust has no tracing garbage collector: ownership rules checked at compile time, plus RAII (Resource Acquisition Is Initialization), drop each value at a known point, when its single owner goes out of scope.
       </p>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
@@ -99,8 +111,8 @@
           <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #334155; line-height: 1.6;">
             <li>Stack vs Heap allocations & cache locality</li>
             <li>Single ownership rule & Move semantics</li>
-            <li>Shared (<code>&T</code>) vs Exclusive (<code>&mut T</code>) references</li>
-            <li>Non-Lexical Lifetimes (NLL) & lifetime annotations (<code>'a</code>)</li>
+            <li>Shared (<code>&amp;T</code>) vs exclusive (<code>&amp;mut T</code>) references</li>
+            <li>Non-Lexical Lifetimes (NLL, RFC 2094) &amp; lifetime annotations (<code>'a</code>)</li>
           </ul>
         </div>
         <div style="background: #fff7ed; border: 1px solid #ffedd5; border-radius: 8px; padding: 1rem;">
@@ -120,12 +132,12 @@
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
         <h2 style="font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0; display: flex; align-items: center; gap: 0.6rem;">
           <span style="background: #f3e8ff; color: #9333ea; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: 800;">03</span>
-          Algebraic Types, Enums & Zero-Cost Error Handling
+          Algebraic Types, Enums & Errors as Values
         </h2>
-        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">roadmap.sh Milestone: Data Structures</span>
+        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Stage 3 of 6</span>
       </div>
       <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.25rem;">
-        In TypeScript, union types and nullable types (<code>null | undefined</code>) are checked at compile time but erased at runtime, leaving programs vulnerable to <code>TypeError: Cannot read properties of undefined</code>. Rust has no <code>null</code>. Instead, it utilizes Algebraic Data Types (ADTs) with <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code>, enforced through exhaustive pattern matching.
+        In TypeScript, union types and nullable types (<code>null | undefined</code>) are checked at compile time but erased at runtime, leaving programs vulnerable to <code>TypeError: Cannot read properties of undefined</code>. Safe Rust has no null references. Instead, it uses Algebraic Data Types (ADTs) such as <code>Option&lt;T&gt;</code> and <code>Result&lt;T, E&gt;</code>, and the compiler requires every <code>match</code> to handle all cases.
       </p>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
@@ -158,10 +170,10 @@
           <span style="background: #ffedd5; color: #ea580c; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: 800;">04</span>
           Traits, Monomorphization & Smart Pointers
         </h2>
-        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">roadmap.sh Milestone: Advanced Language</span>
+        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Stage 4 of 6</span>
       </div>
       <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.25rem;">
-        Unlike TypeScript interfaces, which rely on structural subtyping, Rust traits provide behavioral contracts with zero runtime overhead via static dispatch (monomorphization). When dynamic dispatch is required, <code>dyn Trait</code> produces a vtable. Smart pointers (<code>Box</code>, <code>Rc</code>, <code>Arc</code>, <code>Mutex</code>, <code>RwLock</code>) provide explicit shared ownership and interior mutability.
+        TypeScript interfaces are structural: any object with the right shape fits. Rust traits are nominal: a type implements a trait only through an explicit <code>impl</code>. Generic code is monomorphized into a specialized copy per concrete type (static dispatch with no runtime lookup, paid for in compile time and binary size). When you need dynamic dispatch, <code>dyn Trait</code> calls methods through a vtable. Smart pointers (<code>Box</code>, <code>Rc</code>, <code>Arc</code>) make ownership explicit, and <code>RefCell</code>, <code>Mutex</code> and <code>RwLock</code> provide interior mutability.
       </p>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
@@ -194,20 +206,21 @@
           <span style="background: #dcfce7; color: #16a34a; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: 800;">05</span>
           Concurrency, Fearless Multi-Threading & Tokio
         </h2>
-        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">roadmap.sh Milestone: Concurrency & Async</span>
+        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Stage 5 of 6</span>
       </div>
       <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.25rem;">
-        Node.js utilizes a single-threaded libuv event loop where long-running CPU calculations block all incoming HTTP requests. In Rust, the <code>Send</code> and <code>Sync</code> marker traits mathematically guarantee that multi-threaded code is free of data races. Asynchronous Rust uses zero-cost state machines that only execute when polled by a work-stealing executor like Tokio.
+        In Node.js, your JavaScript runs on a single event loop thread, so a long CPU-bound function delays every other request until it finishes. In Rust, the <code>Send</code> and <code>Sync</code> marker traits let the compiler reject safe code that could cause a data race. An <code>async fn</code> compiles to a state machine that does nothing until an executor polls it; Tokio's multi-threaded runtime spreads tasks across worker threads with work stealing, as described in Tokio's 2019 post "Making the Tokio scheduler 10x faster".
       </p>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
           <h4 style="margin: 0 0 0.5rem; color: #0f172a; font-size: 0.95rem;">Key Roadmap Concepts</h4>
           <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #334155; line-height: 1.6;">
-            <li>OS threads (<code>std::thread::spawn</code>) vs Async green tasks (<code>tokio::spawn</code>)</li>
-            <li>Message passing with CSP channels (<code>mpsc</code>, <code>broadcast</code>, <code>watch</code>, <code>oneshot</code>)</li>
+            <li>OS threads (<code>std::thread::spawn</code>) vs lightweight async tasks (<code>tokio::spawn</code>)</li>
+            <li>CPU-bound work off the async workers with <code>tokio::task::spawn_blocking</code></li>
+            <li>Message passing with <code>tokio::sync</code> channels (<code>mpsc</code>, <code>broadcast</code>, <code>watch</code>, <code>oneshot</code>)</li>
             <li><code>Future</code> trait, <code>Pin&lt;P&gt;</code>, and cooperative polling loops</li>
-            <li>Task budgeting, cooperative yield (<code>tokio::task::yield_now</code>), cancellation tokens</li>
+            <li><code>tokio::select!</code>, <code>JoinSet</code>, cooperative yield (<code>tokio::task::yield_now</code>) and <code>CancellationToken</code> from <code>tokio-util</code></li>
           </ul>
         </div>
         <div style="background: #fff7ed; border: 1px solid #ffedd5; border-radius: 8px; padding: 1rem;">
@@ -229,20 +242,20 @@
           <span style="background: #fef9c3; color: #ca8a04; padding: 0.2rem 0.6rem; border-radius: 6px; font-size: 0.85rem; font-weight: 800;">06</span>
           Web Services, Databases & Production Deployment
         </h2>
-        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">roadmap.sh Milestone: Ecosystem</span>
+        <span style="font-size: 0.85rem; color: #64748b; font-weight: 600;">Stage 6 of 6</span>
       </div>
       <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.25rem;">
-        Transitioning from Express/Fastify/NestJS to high-throughput Rust web microservices. The modern Rust production stack centers around <strong>Axum</strong> (built atop Tower and Hyper), compile-time checked SQL with <strong>SQLx</strong>, asynchronous ORM with <strong>SeaORM</strong>, high-performance serialization via <strong>Serde</strong>, and multi-stage <strong>cargo-chef</strong> Distroless Docker containers.
+        Moving from Express, Fastify or NestJS to Rust web services. A common production stack is <strong>Axum</strong> (built on Tower and Hyper), <strong>SQLx</strong> for SQL checked at compile time, <strong>SeaORM</strong> as an async ORM, <strong>Serde</strong> for serialization, and multi-stage Docker builds that cache dependencies with <strong>cargo-chef</strong> and ship on a distroless base image.
       </p>
 
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem;">
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem;">
           <h4 style="margin: 0 0 0.5rem; color: #0f172a; font-size: 0.95rem;">Key Roadmap Concepts</h4>
           <ul style="margin: 0; padding-left: 1.2rem; font-size: 0.875rem; color: #334155; line-height: 1.6;">
-            <li>Web Frameworks: Axum 0.7+, Actix-web, Tower middleware</li>
-            <li>Databases: SQLx (compile-time SQL validation), SeaORM</li>
-            <li>Serialization: <code>serde</code>, <code>serde_json</code> with zero-copy deserialization</li>
-            <li>Production Containers: <code>cargo-chef</code> recipe caching & Distroless images (&lt;20MB)</li>
+            <li>Web frameworks: Axum 0.8 (path params as <code>/{id}</code>), Actix-web, Tower middleware</li>
+            <li>Databases: SQLx (<code>query!</code> macros check SQL against a live database or data cached by <code>cargo sqlx prepare</code>), SeaORM</li>
+            <li>Serialization: <code>serde</code>, <code>serde_json</code>, with optional borrowed (zero-copy) <code>&amp;str</code> fields</li>
+            <li>Production containers: <code>cargo-chef</code> dependency caching &amp; <code>gcr.io/distroless/cc-debian13</code> runtime images</li>
           </ul>
         </div>
         <div style="background: #fff7ed; border: 1px solid #ffedd5; border-radius: 8px; padding: 1rem;">
@@ -262,7 +275,7 @@
   <!-- Bottom CTA / Navigation -->
   <div style="text-align: center; margin-top: 3.5rem; padding-top: 2rem; border-top: 1px solid #e2e8f0;">
     <h3 style="font-size: 1.25rem; font-weight: 700; color: #0f172a; margin-bottom: 0.5rem;">Ready to begin your journey?</h3>
-    <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 1.5rem;">Jump into the interactive 3-column studio with live Rust compilation.</p>
+    <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 1.5rem;">Open the interactive 3-column studio and run the examples on the Rust Playground.</p>
     <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
       <a href="/" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #b7410e; color: #ffffff; padding: 0.75rem 1.75rem; border-radius: 8px; font-weight: 600; text-decoration: none; box-shadow: 0 4px 6px -1px rgba(183, 65, 14, 0.2);">
         ⚡ Open Interactive Studio
@@ -272,4 +285,42 @@
       </a>
     </div>
   </div>
+
+  <section class="appendix-faq" itemscope itemtype="https://schema.org/FAQPage" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <dl>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What should a Node.js developer learn first in Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Start with cargo and basic syntax, then spend real time on ownership and borrowing before touching async. Many errors in async and web code, such as use of a moved value or a future that is not Send, are ownership errors, so learning the rules first makes later stages easier.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Do I need to learn async Rust to build a web server?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Yes, for the mainstream frameworks. Axum and Actix-web are async, and Axum runs on the Tokio runtime, so you need async fn, .await and the basics of Send and 'static bounds on spawned tasks.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What is the Rust equivalent of Express.js?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Axum is the closest match for most Express users: you build a Router, attach async handler functions to routes, and add middleware as Tower layers. Actix-web is a mature alternative with a similar handler-and-extractor style.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What replaces nvm and npm in Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">rustup replaces nvm: it installs and switches between stable, beta and nightly toolchains. cargo replaces npm and most build scripts: it creates projects, downloads crates from crates.io, builds, runs tests and formats code with cargo fmt.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Is this roadmap the same as roadmap.sh/rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">No. It groups the same core topics into six stages and links each stage to chapters in this book. Use roadmap.sh/rust for the full topic map, which covers more areas than this book.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="appendix-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title">Sources and further reading</h2>
+    <ol>
+      <li><a href="https://roadmap.sh/rust" rel="noopener">roadmap.sh: Rust Developer Roadmap</a>: the community topic map this page follows.</li>
+      <li><a href="https://rust-lang.github.io/rustup/concepts/profiles.html" rel="noopener">The rustup book: Profiles</a>: which components the default profile installs.</li>
+      <li><a href="https://rust-lang.github.io/rfcs/2094-nll.html" rel="noopener">RFC 2094: Non-lexical lifetimes</a>: how the borrow checker reasons about reference lifetimes.</li>
+      <li><a href="https://tokio.rs/blog/2019-10-scheduler" rel="noopener">Tokio blog: Making the Tokio scheduler 10x faster</a>: the work-stealing design of Tokio's multi-threaded runtime.</li>
+      <li><a href="https://docs.rs/axum/latest/axum/" rel="noopener">Axum documentation on docs.rs</a>: routing, extractors and state for the web stage.</li>
+      <li><a href="https://github.com/LukeMathWalker/cargo-chef" rel="noopener">cargo-chef README</a>: caching Rust dependencies in Docker builds.</li>
+    </ol>
+  </section>
 </div>

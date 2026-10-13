@@ -2,15 +2,26 @@
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #ffedd5; color: #c2410c; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 01 • Core Mental Model</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Mastering the Rust Borrow Checker</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Aliasing XOR Mutability, Non-Lexical Lifetimes (NLL), and why the borrow checker prevents data races at compile time.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Aliasing XOR Mutability, Non-Lexical Lifetimes (NLL), and how the borrow checker rules out data races in safe Rust at compile time.</p>
   </div>
+
+  <aside class="appendix-takeaways" aria-labelledby="takeaways-title">
+    <h2 id="takeaways-title">Key takeaways</h2>
+    <ul>
+      <li>Rust's borrow checker allows either any number of shared references (<code>&amp;T</code>) or exactly one mutable reference (<code>&amp;mut T</code>) to a value at a time, never both.</li>
+      <li>Since Rust 1.31 (December 2018), Non-Lexical Lifetimes (RFC 2094) end a borrow at its last use instead of at the closing brace of its scope.</li>
+      <li>Polonius is the next borrow checker; it accepts some correct programs that NLL rejects, but it is still nightly-only (<code>-Zpolonius</code>) and its stabilization is a 2026 Rust project goal.</li>
+      <li>Shared references implement <code>Copy</code> and mutable references do not, so <code>let r2 = r1;</code> moves an <code>&amp;mut T</code> while passing it to a function parameter typed <code>&amp;mut T</code> reborrows it.</li>
+      <li>When ownership rules are too strict for a design, <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> (single thread) and <code>Arc&lt;Mutex&lt;T&gt;&gt;</code> (multi-thread) move the aliasing check from compile time to run time.</li>
+    </ul>
+  </aside>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">1. The Golden Rule: Aliasing XOR Mutability</h2>
-    <p>In JavaScript, references are shared everywhere without restrictions. If three functions hold a reference to the same object, any of them can mutate it at any time. In single-threaded Node.js, this causes hard-to-trace state mutation bugs. In multi-threaded systems, it causes fatal data races.</p>
+    <p>In JavaScript, object references are shared without restrictions. If three functions hold a reference to the same object, any of them can mutate it at any time. In single-threaded Node.js this shows up as hard-to-trace state mutation bugs. With shared memory across threads (for example <code>SharedArrayBuffer</code> in worker threads), unsynchronized access becomes a data race. Safe Rust rules data races out at compile time.</p>
     <div style="background: #f8fafc; border-left: 4px solid #b7410e; padding: 1rem 1.25rem; border-radius: 4px; font-weight: 600; font-size: 1.05rem; margin: 1.25rem 0;">
-      At any given time, for any resource T, you can have:<br>
-      • Multiple immutable references (<code>&amp;T</code>) OR<br>
+      At any given time, for any value of type T, you can have:<br>
+      • Any number of shared references (<code>&amp;T</code>) OR<br>
       • Exactly one mutable reference (<code>&amp;mut T</code>),<br>
       <strong>NEVER BOTH AT THE SAME TIME.</strong>
     </div>
@@ -19,58 +30,61 @@
   <!-- 2. Non-Lexical Lifetimes (NLL) & Polonius -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">2. Non-Lexical Lifetimes (NLL) &amp; Polonius</h2>
-    <p>Historically (pre-Rust 2018), lifetimes were strictly <strong>lexical</strong>: a borrow remained active until the closing curly brace <code>}</code> of its enclosing AST block. Rust 2018 introduced <strong>NLL (Non-Lexical Lifetimes)</strong>, which calculates borrows over the Control Flow Graph (CFG) so that a borrow ends at its <em>last point of usage</em>.</p>
-    
+    <p>Before NLL, borrows were <strong>lexical</strong>: a borrow stayed active until the closing curly brace <code>}</code> of its enclosing scope. NLL (RFC 2094) shipped in Rust 1.31 for the 2018 edition and in Rust 1.36 for the 2015 edition. It computes borrows over the MIR control-flow graph, so a borrow ends at its <em>last use</em>.</p>
+
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>let mut data = vec![1, 2, 3];
 
-let first = &amp;data[0];               // Immutable borrow begins
-println!("First item: {}", first);  // Last point of usage! Lexical borrow ends here under NLL.
+let first = &amp;data[0];               // Shared borrow begins
+println!("First item: {}", first);  // Last use of `first`: under NLL the borrow ends here
 
-data.push(4);                       // Valid under NLL (in Rust 2015, this failed until scope ended)</code></pre>
+data.push(4);                       // Accepted under NLL; the old lexical checker rejected it</code></pre>
 
     <h4 style="margin: 1.25rem 0 0.5rem; color: #0f172a; font-size: 1.05rem;">The Next Frontier: Polonius (Origin-Based Analysis)</h4>
     <p style="margin-top: 0; color: #475569; font-size: 0.95rem;">
-      Even NLL fails on conditional returns from map lookups because CFG borrows approximate lifetimes along whole control paths. <strong>Polonius</strong> is the next-generation borrow checker that tracks loans via origins dynamically across execution paths:
+      NLL still rejects some correct code, most famously a conditional return of a borrow (listed as "problem case #3" in RFC 2094). <strong>Polonius</strong> is a reformulation of the borrow checker that tracks where each loan can flow (its "origins") statically, per program point. It is available on nightly with <code>-Zpolonius</code> and is not yet on stable; stabilizing "Polonius Alpha" is a 2026 Rust project goal.
     </p>
-    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>// Classic pattern rejected by NLL, accepted under Polonius:
-fn get_or_insert(map: &amp;mut HashMap&lt;String, String&gt;, key: &amp;str) -&gt; &amp;String {
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>use std::collections::HashMap;
+
+// Rejected by NLL (E0502), accepted under Polonius:
+fn get_or_insert&lt;'a&gt;(map: &amp;'a mut HashMap&lt;String, String&gt;, key: &amp;str) -&gt; &amp;'a String {
     if let Some(v) = map.get(key) {
-        return v; // Under NLL, this borrow persists into the 'else' branch!
+        return v; // Returning `v` forces this borrow to last for all of 'a, even on the path below
     }
-    map.insert(key.to_string(), String::from("default")); // NLL Error: cannot borrow mutably
+    map.insert(key.to_string(), String::from("default")); // NLL: cannot borrow `*map` as mutable
     &amp;map[key]
 }</code></pre>
+    <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 0;">On stable today, work around it with the entry API: <code>map.entry(key.to_string()).or_insert_with(|| String::from("default"))</code>.</p>
   </div>
 
   <!-- 3. Reborrowing vs. Move Semantics -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">3. Reborrowing vs. Move Semantics</h2>
-    <p>Unlike immutable references (<code>&amp;T</code>) which implement <code>Copy</code>, mutable references (<code>&amp;mut T</code>) <strong>do not implement <code>Copy</code></strong>. Moving an <code>&amp;mut T</code> invalidates the source variable. However, Rust transparently inserts a <strong>reborrow</strong> when passing or assigning a mutable reference.</p>
-    
+    <p>Shared references (<code>&amp;T</code>) implement <code>Copy</code>; mutable references (<code>&amp;mut T</code>) <strong>do not</strong>. Moving an <code>&amp;mut T</code> makes the source variable unusable. However, when the target type is already known to be <code>&amp;mut T</code> (a function parameter, or a <code>let</code> with an explicit type), the compiler inserts an implicit <strong>reborrow</strong> instead of a move.</p>
+
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0;">
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 8px;">
-        <strong style="color: #c2410c;">Explicit Move (Ownership Transfer)</strong>
-        <p style="font-size: 0.9rem; color: #64748b; margin: 0.5rem 0;">Passing an owned value moves it permanently:</p>
+        <strong style="color: #c2410c;">Move of a Mutable Reference</strong>
+        <p style="font-size: 0.9rem; color: #64748b; margin: 0.5rem 0;">An untyped <code>let</code> moves the reference itself:</p>
         <pre style="background: #0f172a; color: #f8fafc; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; font-family: monospace;"><code>let mut s = String::from("hi");
 let r1 = &amp;mut s;
-let r2 = r1; // MOVES r1 into r2!
+let r2 = r1; // MOVES r1 into r2
 
-// println!("{}", r1); 
+// println!("{}", r1);
 // ERROR: borrow of moved value: `r1`
 println!("{}", r2); // OK</code></pre>
       </div>
 
       <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 8px;">
         <strong style="color: #16a34a;">Reborrowing (<code>&amp;mut *r</code>)</strong>
-        <p style="font-size: 0.9rem; color: #64748b; margin: 0.5rem 0;">Creates a temporary child borrow that suspends the parent:</p>
+        <p style="font-size: 0.9rem; color: #64748b; margin: 0.5rem 0;">Creates a shorter child borrow that suspends the parent:</p>
         <pre style="background: #0f172a; color: #f8fafc; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; font-family: monospace;"><code>let mut s = String::from("hi");
-let mut r1 = &amp;mut s;
+let r1 = &amp;mut s;
 
-// Implicit or explicit reborrow:
-let r2 = &amp;mut *r1; // r1 suspended while r2 lives
+// Explicit reborrow:
+let r2 = &amp;mut *r1; // r1 suspended while r2 is in use
 r2.push_str(" world");
 
-println!("{}", r1); // OK! r1 usable once r2's lifetime ends</code></pre>
+println!("{}", r1); // OK: r2 is no longer used</code></pre>
       </div>
     </div>
   </div>
@@ -94,12 +108,12 @@ println!("{}", r1); // OK! r1 usable once r2's lifetime ends</code></pre>
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Shared Mutable (Single-Threaded)</td>
           <td style="padding: 0.75rem 0.5rem;"><code>Rc&lt;RefCell&lt;T&gt;&gt;</code></td>
-          <td style="padding: 0.75rem 0.5rem;">Standard JS object with runtime borrow check</td>
+          <td style="padding: 0.75rem 0.5rem;">Plain shared JS object, plus a runtime check that panics on a conflicting borrow</td>
         </tr>
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Shared Mutable (Multi-Threaded)</td>
           <td style="padding: 0.75rem 0.5rem;"><code>Arc&lt;Mutex&lt;T&gt;&gt;</code></td>
-          <td style="padding: 0.75rem 0.5rem;">Global singleton with mutual exclusion</td>
+          <td style="padding: 0.75rem 0.5rem;">Shared object guarded by a lock (like <code>Atomics</code> on a <code>SharedArrayBuffer</code>)</td>
         </tr>
         <tr>
           <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Read-Heavy Shared State</td>
@@ -109,4 +123,41 @@ println!("{}", r1); // OK! r1 usable once r2's lifetime ends</code></pre>
       </tbody>
     </table>
   </div>
+
+  <section class="appendix-faq" itemscope itemtype="https://schema.org/FAQPage" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <dl>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Why does Rust say "cannot borrow as mutable because it is also borrowed as immutable"?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Error E0502 means a shared reference is still used later in the code while you try to take a mutable one. Rust allows many shared references or one mutable reference to a value, never both at once. Move the last use of the shared reference before the mutation, or clone the data you need from it.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Does Rust have a garbage collector like Node.js?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">No, Rust has no tracing garbage collector. Each value has one owner and is dropped when that owner goes out of scope, and the borrow checker proves at compile time that no reference outlives the value. Reference counting with <code>Rc</code> or <code>Arc</code> is available when you need shared ownership.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What are non-lexical lifetimes in Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Non-lexical lifetimes (NLL, RFC 2094) end a borrow at its last use instead of at the end of its enclosing block. NLL became the default in Rust 1.31 for the 2018 edition and in Rust 1.36 for the 2015 edition. It removed many false borrow errors that the older lexical checker reported.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Is Polonius available on stable Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Not yet. Polonius can be enabled on nightly with <code>-Zpolonius</code>, and stabilizing its "alpha" form is a 2026 Rust project goal. On stable, rewrite code that needs it, for example using the <code>HashMap</code> entry API for get-or-insert.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">How do I share mutable state between functions in Rust like a JavaScript object?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Use <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> on one thread or <code>Arc&lt;Mutex&lt;T&gt;&gt;</code> across threads. Both let several owners mutate the same value, with the exclusive-access rule checked at run time instead of compile time. <code>RefCell</code> panics on a conflicting borrow, while <code>Mutex</code> blocks until the lock is free.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="appendix-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title">Sources and further reading</h2>
+    <ol>
+      <li><a href="https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html" rel="noopener">The Rust Book: References and Borrowing</a>: the shared-or-mutable borrowing rules.</li>
+      <li><a href="https://rust-lang.github.io/rfcs/2094-nll.html" rel="noopener">RFC 2094: Non-lexical lifetimes</a>: NLL design and the conditional-return problem case.</li>
+      <li><a href="https://rust-lang.github.io/polonius/" rel="noopener">The Polonius book</a>: how origin-based borrow checking works.</li>
+      <li><a href="https://goals.rust-lang.org/2026/goals.html" rel="noopener">Rust Project Goals 2026</a>: lists "Stabilize and model Polonius Alpha".</li>
+      <li><a href="https://doc.rust-lang.org/std/cell/index.html" rel="noopener">std::cell module docs</a>: interior mutability with <code>Cell</code> and <code>RefCell</code>.</li>
+    </ol>
+  </section>
 </div>

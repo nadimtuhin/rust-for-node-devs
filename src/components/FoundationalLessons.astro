@@ -1,0 +1,45 @@
+---
+import { foundationalLessons } from '../data/crossLinks';
+
+interface Props {
+  appendixSlug: string;
+}
+const { appendixSlug } = Astro.props;
+const lessonLinks = foundationalLessons(appendixSlug);
+---
+<nav class="foundational-lessons" aria-labelledby="foundationalLessonsHeading">
+  <h2 id="foundationalLessonsHeading">Foundational chapters for this appendix</h2>
+  <ul>
+    {lessonLinks.map(link => (
+      <li><a href={link.href}>{link.label}</a></li>
+    ))}
+  </ul>
+</nav>
+
+<style>
+  .foundational-lessons {
+    max-width: 900px;
+    margin: 0 auto 3rem;
+    padding: 1.25rem 1.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+
+  h2 {
+    font-size: 1rem;
+    margin: 0 0 0.75rem;
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.2rem;
+    font-size: 0.875rem;
+    line-height: 1.7;
+    columns: 2 18rem;
+  }
+
+  a {
+    color: var(--rust-primary);
+    font-weight: 600;
+  }
+</style>

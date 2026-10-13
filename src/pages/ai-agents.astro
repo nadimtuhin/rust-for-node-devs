@@ -2,11 +2,13 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import ViewComponent from '../components/views/AiAgentsView.astro';
+import FoundationalLessons from '../components/FoundationalLessons.astro';
 ---
 
 <Layout title="AI & Autonomous Agents in Rust | Rust for Node Devs" description="Building high-throughput LLM tool callers, token streamers, and local inference pipelines in Rust with rig-core and candle.">
   <Header />
   <main id="main-content" role="main" style="min-height: calc(100vh - 54px); overflow-y: auto;">
     <ViewComponent />
+    <FoundationalLessons appendixSlug="ai-agents" />
   </main>
 </Layout>

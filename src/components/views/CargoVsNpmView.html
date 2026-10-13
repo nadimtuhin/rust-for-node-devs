@@ -5,6 +5,17 @@
     <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Additive feature flags, duplicate dependency handling without node_modules, workspace inheritance, pre-1.0 SemVer rules, and release profiles.</p>
   </div>
 
+  <aside class="appendix-takeaways" aria-labelledby="takeaways-title">
+    <h2 id="takeaways-title">Key takeaways</h2>
+    <ul>
+      <li>Cargo is the Rust build tool and package manager in one: <code>cargo add</code>, <code>cargo check</code>, <code>cargo build --release</code>, <code>cargo test</code> and <code>cargo clippy</code> cover what npm scripts, tsc, a bundler, a test runner and ESLint do in a Node.js project.</li>
+      <li>Cargo resolves all SemVer-compatible requirements for a crate to one version, and builds two copies of a crate only when the requirements are SemVer-incompatible, such as <code>0.9</code> and <code>1.0</code>.</li>
+      <li>Cargo features are additive: when several crates in the dependency graph enable different features of the same dependency, Cargo compiles that dependency once with the union of those features.</li>
+      <li>In Cargo.toml a bare version such as <code>"0.2.3"</code> means the caret range <code>^0.2.3</code>, which allows <code>0.2.x</code> updates but not <code>0.3.0</code>, while the same string in package.json pins an exact version.</li>
+      <li>Release builds already use <code>opt-level = 3</code>; <code>lto</code>, <code>codegen-units = 1</code>, <code>strip</code> and <code>panic = "abort"</code> trade longer compile times or different panic behaviour for smaller or faster binaries.</li>
+    </ul>
+  </aside>
+
   <!-- CLI Workflow -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">1. Rosetta Stone: Core CLI Workflow</h2>
@@ -30,7 +41,7 @@
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem;"><code>npx tsc --noEmit</code></td>
           <td style="padding: 0.75rem 0.5rem;"><code>cargo check</code></td>
-          <td style="padding: 0.75rem 0.5rem;">Fast type &amp; borrow check without codegen</td>
+          <td style="padding: 0.75rem 0.5rem;">Type &amp; borrow check without generating machine code</td>
         </tr>
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem;"><code>npm run build</code></td>
@@ -45,7 +56,7 @@
         <tr>
           <td style="padding: 0.75rem 0.5rem;"><code>npx eslint .</code></td>
           <td style="padding: 0.75rem 0.5rem;"><code>cargo clippy</code></td>
-          <td style="padding: 0.75rem 0.5rem;">Run strict static linter</td>
+          <td style="padding: 0.75rem 0.5rem;">Run the official linter</td>
         </tr>
       </tbody>
     </table>
@@ -54,29 +65,33 @@
   <!-- node_modules & Deduplication -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">2. How Cargo Solves the node_modules Problem</h2>
-    <p style="color: #475569; line-height: 1.6;">In Node.js, duplicate packages often lead to massive nested <code>node_modules</code> and runtime collisions (prototype pollution). Cargo compiles external crates once into target cache. If two dependencies require different major versions (e.g. <code>serde 1.0</code> and <code>serde 0.9</code>), Cargo mangles the symbols and compiles both side-by-side with zero collisions.</p>
+    <p style="color: #475569; line-height: 1.6;">In Node.js, conflicting version ranges are resolved by nesting extra copies of a package inside <code>node_modules</code>, so the same package can be installed and loaded several times. Cargo has no <code>node_modules</code>: crate sources live in the shared <code>~/.cargo/registry</code> cache and compiled artifacts go to the project's <code>target/</code> directory. The resolver picks a single version for all SemVer-compatible requirements (for example <code>^1.0.100</code> and <code>^1.0.190</code> resolve to one <code>1.0.x</code>). Only SemVer-incompatible requirements (e.g. <code>serde 1.0</code> and <code>serde 0.9</code>) produce two copies, which are linked side by side with distinct mangled symbols.</p>
+    <p style="color: #475569; line-height: 1.6;">The catch: types from the two copies are different types. Passing a value built with <code>serde 0.9</code> where <code>serde 1.0</code> traits are expected fails to compile with a confusing "expected X, found X" error. <code>cargo tree --duplicates</code> (<code>cargo tree -d</code>) lists every crate built more than once, similar to <code>npm ls &lt;pkg&gt;</code>.</p>
   </div>
 
   <!-- Additive Features -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">3. Additive Feature Flags &amp; Opt-Out (default-features = false)</h2>
-    <p style="color: #475569; line-height: 1.6;">In Rust, crate capabilities are gated behind compile-time feature flags. Features are <strong>strictly additive</strong>: if dependency A enables <code>features = ["derive"]</code> and dependency B does not, Cargo builds the superset union. To minimize binary bloat or replace default libraries (e.g. replacing OpenSSL with pure-Rust rustls), explicitly declare <code>default-features = false</code>:</p>
+    <p style="color: #475569; line-height: 1.6;">In Rust, crate capabilities are gated behind compile-time feature flags. Features are <strong>additive</strong>: if crate A depends on <code>serde</code> with <code>features = ["derive"]</code> and crate B depends on it without, Cargo compiles <code>serde</code> once with the union of both feature sets. With resolver version 2 or later (the default since edition 2021), features enabled only by build-dependencies, proc-macros, dev-dependencies or other target platforms are not merged into your normal build. To drop features you don't need, declare <code>default-features = false</code> and list the ones you want:</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code>[dependencies]
-# Opt out of heavy default features (e.g. native-tls):
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+# reqwest 0.13 defaults: default-tls (rustls), charset, http2, system-proxy.
+# Keep only rustls TLS and the JSON helpers:
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }
+# no_std use: drop the default "std" feature, keep heap types:
 serde = { version = "1.0", default-features = false, features = ["alloc"] }</code></pre>
   </div>
 
   <!-- Workspaces & Inheritance -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">4. Cargo Workspaces &amp; Dependency Inheritance</h2>
-    <p style="color: #475569; line-height: 1.6;">Similar to pnpm workspaces or Turborepo, Cargo workspaces allow managing multiple crates with unified lockfiles and shared dependencies via <code>workspace = true</code>:</p>
+    <p style="color: #475569; line-height: 1.6;">Similar to pnpm workspaces, Cargo workspaces manage multiple crates with one shared <code>Cargo.lock</code> and one <code>target/</code> directory. Versions declared once in <code>[workspace.dependencies]</code> are inherited with <code>workspace = true</code>:</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code># Root Cargo.toml
 [workspace]
 members = ["crates/api", "crates/auth", "crates/db"]
+resolver = "3"   # edition 2024 default (Rust 1.84+); a virtual workspace without it falls back to "1"
 
 [workspace.dependencies]
-tokio = { version = "1.43", features = ["full"] }
+tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 tracing = "0.1"
 
@@ -89,7 +104,7 @@ serde = { workspace = true }</code></pre>
   <!-- SemVer 0.x Rules -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">5. SemVer Quirks: Pre-1.0 Versions in Cargo vs npm</h2>
-    <p style="color: #475569; line-height: 1.6;">A major footgun for Node.js engineers is how Cargo handles <code>0.x</code> versions:</p>
+    <p style="color: #475569; line-height: 1.6;">Cargo's caret rules for <code>0.x</code> match npm's <code>^</code> rules. The difference for Node.js engineers is the default: in <code>Cargo.toml</code> a bare <code>"0.2.3"</code> means <code>^0.2.3</code>, while a bare <code>"0.2.3"</code> in <code>package.json</code> is an exact pin. Write <code>"=0.2.3"</code> for an exact pin in Cargo. Ranges per The Cargo Book, "Specifying Dependencies":</p>
     <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem; margin-top: 0.5rem;">
       <thead>
         <tr style="border-bottom: 2px solid #e2e8f0; color: #64748b;">
@@ -107,26 +122,63 @@ serde = { workspace = true }</code></pre>
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem;"><code>"0.2.3"</code></td>
           <td style="padding: 0.75rem 0.5rem;"><code>&gt;= 0.2.3, &lt; 0.3.0</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><strong>Minor bumps are BREAKING in 0.x!</strong></td>
+          <td style="padding: 0.75rem 0.5rem;">Bump to <code>0.3.0</code>: <strong>minor bumps are breaking in 0.x</strong></td>
         </tr>
         <tr>
           <td style="padding: 0.75rem 0.5rem;"><code>"0.0.3"</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>== 0.0.3</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><strong>Patch bumps are BREAKING in 0.0.x!</strong></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>&gt;= 0.0.3, &lt; 0.0.4</code></td>
+          <td style="padding: 0.75rem 0.5rem;">Bump to <code>0.0.4</code>: <strong>every patch bump is breaking in 0.0.x</strong></td>
         </tr>
       </tbody>
     </table>
   </div>
 
   <!-- Build Profiles -->
-  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">6. Production Build Profiles &amp; LTO Optimization</h2>
-    <p style="color: #475569; line-height: 1.6;">In Node.js, minification with esbuild/terser trims bundle size. In Rust, LLVM optimization flags in <code>Cargo.toml</code> strip unused code, inline across crate boundaries, and reduce container binary size by up to 80%:</p>
+    <p style="color: #475569; line-height: 1.6;">In Node.js, minification with esbuild/terser trims bundle size. In Rust, <code>[profile.release]</code> in <code>Cargo.toml</code> controls optimization level, cross-crate inlining (LTO) and symbol stripping. <code>cargo build --release</code> already uses <code>opt-level = 3</code>, and since Rust 1.77 it strips debuginfo by default when <code>debug</code> is off. The settings below can shrink the binary further at the cost of compile time; measure the effect on your own crate with <code>ls -lh target/release/&lt;bin&gt;</code>:</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code>[profile.release]
-opt-level = 3        # Maximum optimizations
-lto = "thin"         # Link-Time Optimization across crate boundaries (or "fat")
-codegen-units = 1    # Slower compile, maximum binary optimization and inlining
-panic = "abort"      # Strip unwinding landing pads (shrinks binary, instant exit)
-strip = true         # Automatically strip debug symbols (saves 60-80% binary size)</code></pre>
+opt-level = 3        # Already the release default; "s" or "z" optimize for size
+lto = "thin"         # Link-Time Optimization across crates ("fat" / true: slower, more thorough)
+codegen-units = 1    # One codegen unit: slower compile, more inlining opportunities
+panic = "abort"      # No unwinding tables; a panic in any thread or Tokio task ends the process
+strip = true         # Strip symbols as well as debuginfo (same as "symbols")</code></pre>
   </div>
+
+  <section class="appendix-faq" itemscope itemtype="https://schema.org/FAQPage" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <dl>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What is the Cargo equivalent of npm install?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text"><code>cargo add &lt;crate&gt;</code> adds a dependency to Cargo.toml, like <code>npm install &lt;pkg&gt;</code>. A fresh clone needs no separate install step: <code>cargo build</code> or <code>cargo check</code> downloads and compiles everything listed in Cargo.toml and Cargo.lock. <code>cargo install &lt;crate&gt;</code> is for command-line tools, similar to <code>npm install -g</code>.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Does Rust have a node_modules folder?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">No. Cargo downloads crate sources into a shared cache under <code>~/.cargo/registry</code> and writes compiled output to the project's <code>target/</code> directory. Rust dependencies are statically linked into the final binary by default, so the binary is the only build artifact that needs to ship.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Should I commit Cargo.lock like package-lock.json?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Yes. The Cargo Book recommends committing Cargo.lock for applications and, since 2023, for libraries as well. Cargo ignores a library's lockfile when that library is used as a dependency, the same way npm ignores a dependency's package-lock.json.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Why doesn't cargo update move my 0.x dependency to the next minor version?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Cargo treats <code>0.2</code> to <code>0.3</code> as a breaking change. A requirement of <code>"0.2.3"</code> means <code>&gt;=0.2.3, &lt;0.3.0</code>, so <code>cargo update</code> stays within <code>0.2.x</code>. Change the version in Cargo.toml, or run <code>cargo add &lt;crate&gt;@0.3</code>, to move to the next minor release.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What are Cargo features compared to optional npm packages?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Cargo features are compile-time switches declared by a crate that turn on optional code and optional dependencies. They are additive: Cargo compiles each dependency once with the union of features requested anywhere in the graph. npm has no direct equivalent; the closest patterns are optional peer dependencies and separate entry points.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="appendix-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title">Sources and further reading</h2>
+    <ol>
+      <li><a href="https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html" rel="noopener">The Cargo Book: Specifying Dependencies</a>: caret requirements and the 0.x / 0.0.x ranges.</li>
+      <li><a href="https://doc.rust-lang.org/cargo/reference/features.html" rel="noopener">The Cargo Book: Features</a>: feature unification and <code>default-features = false</code>.</li>
+      <li><a href="https://doc.rust-lang.org/cargo/reference/resolver.html" rel="noopener">The Cargo Book: Dependency Resolution</a>: unification of SemVer-compatible versions and resolver versions 2 and 3.</li>
+      <li><a href="https://doc.rust-lang.org/cargo/reference/workspaces.html" rel="noopener">The Cargo Book: Workspaces</a>: shared Cargo.lock and <code>[workspace.dependencies]</code> inheritance.</li>
+      <li><a href="https://doc.rust-lang.org/cargo/reference/profiles.html" rel="noopener">The Cargo Book: Profiles</a>: release defaults for <code>opt-level</code>, <code>lto</code>, <code>codegen-units</code>, <code>panic</code> and <code>strip</code>.</li>
+    </ol>
+  </section>
 </div>

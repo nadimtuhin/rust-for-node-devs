@@ -7,10 +7,12 @@ const { chapterKey = 'basic_vars' } = Astro.props;
 import { chaptersData } from '../data/chapters';
 import { chapterInsights } from '../data/chapterInsights';
 import { highlightJS } from '../utils/highlight';
+import { relatedAppendices } from '../data/crossLinks';
 
 const chapter = chaptersData[chapterKey] || chaptersData['basic_vars'];
 const insight = chapterInsights[chapterKey] || chapterInsights['basic_vars'];
 const highlightedNodeCode = highlightJS(chapter.nodeCode);
+const appendixLinks = relatedAppendices(chaptersData[chapterKey] ? chapterKey : 'basic_vars');
 
 const keys = Object.keys(chaptersData);
 const currentIndex = keys.indexOf(chapterKey);
@@ -67,9 +69,38 @@ const nextTitle = hasNext ? chaptersData[keys[currentIndex + 1]].title : '';
       </dl>
     </div>
   </section>
+
+  <nav class="related-appendices" aria-labelledby="relatedAppendicesHeading">
+    <h2 class="insight-heading" id="relatedAppendicesHeading">Go deeper in the appendices</h2>
+    <ul class="related-appendices-list" id="detailRelatedAppendices">
+      {appendixLinks.map(link => (
+        <li><a href={link.href}>{link.label}</a></li>
+      ))}
+    </ul>
+  </nav>
 </article>
 
 <style>
+  .related-appendices {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+
+  .related-appendices-list {
+    margin: 0;
+    padding-left: 1.1rem;
+    font-size: 0.84rem;
+    line-height: 1.7;
+  }
+
+  /* :global because the home studio rebuilds these links client-side on lesson switch. */
+  .related-appendices-list :global(a) {
+    color: var(--rust-primary);
+    font-weight: 600;
+  }
+
   .chapter-insight-section {
     margin-top: 0.25rem;
   }

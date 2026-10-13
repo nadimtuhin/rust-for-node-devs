@@ -2,11 +2,13 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import ViewComponent from '../components/views/BorrowCheckerView.astro';
+import FoundationalLessons from '../components/FoundationalLessons.astro';
 ---
 
 <Layout title="Borrow Checker Mastery | Rust for Node Devs" description="Mental models and visual guide to Rust's Borrow Checker, Aliasing XOR Mutability, and Non-Lexical Lifetimes for JavaScript developers.">
   <Header />
   <main id="main-content" role="main" style="min-height: calc(100vh - 54px); overflow-y: auto;">
     <ViewComponent />
+    <FoundationalLessons appendixSlug="borrow-checker" />
   </main>
 </Layout>

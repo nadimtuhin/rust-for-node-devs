@@ -5,56 +5,104 @@
     <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Common misconceptions, memory traps, and async hazards when transitioning from dynamic JavaScript to systems Rust.</p>
   </div>
 
+  <aside class="appendix-takeaways" aria-labelledby="takeaways-title">
+    <h2 id="takeaways-title">Key takeaways</h2>
+    <ul>
+      <li>Blocking calls such as <code>std::thread::sleep</code> or <code>std::fs</code> inside async Rust stall every task scheduled on that Tokio worker thread; move them to <code>tokio::task::spawn_blocking</code> or use the async equivalents.</li>
+      <li>In Rust release builds, integer overflow wraps silently by default (<code>overflow-checks</code> is off in the release profile), while debug builds panic.</li>
+      <li><code>tokio::select!</code> drops the branches that did not finish, so futures that are not cancellation safe, such as <code>read_exact</code> and <code>write_all</code>, can lose data.</li>
+      <li>Reference cycles of <code>Rc</code> or <code>Arc</code> leak memory because Rust has no tracing garbage collector; break them with <code>Weak</code>.</li>
+      <li>Running destructors is not guaranteed in Rust: <code>std::mem::forget</code> is a safe function, and <code>panic = "abort"</code> or <code>std::process::exit</code> skip <code>Drop</code>.</li>
+    </ul>
+  </aside>
+
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 1.75rem;">
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 1: Calling .clone() to appease the compiler</h3>
-      <p style="color: #475569; line-height: 1.6;">Calling <code>.clone()</code> duplicates heap memory. If you clone a large buffer on every HTTP request, your service will suffer worse latency than Node.js. Use borrowed references (<code>&amp;T</code>) or zero-copy reference counting (<code>Arc&lt;T&gt;</code>) instead.</p>
+      <p style="color: #475569; line-height: 1.6;">Calling <code>.clone()</code> on a <code>String</code>, <code>Vec</code> or similar type allocates and copies the whole heap buffer. Cloning a large buffer on every HTTP request adds an allocation and a memory copy proportional to its size, which can erase the performance you moved to Rust for. Pass borrowed references (<code>&amp;T</code>) where you can, or share the data with <code>Arc&lt;T&gt;</code>, whose <code>clone()</code> only increments an atomic reference count and does not copy the data.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 2: Blocking the Tokio worker thread pool</h3>
-      <p style="color: #475569; line-height: 1.6;">Calling synchronous file I/O or <code>std::thread::sleep</code> inside an async function blocks the OS worker thread assigned to Tokio, starving hundreds of concurrent requests. Offload CPU-heavy or blocking work to <code>tokio::task::spawn_blocking</code> or use <code>tokio::time::sleep</code>.</p>
+      <p style="color: #475569; line-height: 1.6;">Calling synchronous file I/O or <code>std::thread::sleep</code> inside an async function blocks the OS worker thread it runs on, so every other task queued on that worker waits until it returns. Use <code>tokio::time::sleep</code> and <code>tokio::fs</code>, move blocking calls into <code>tokio::task::spawn_blocking</code>, and send long CPU-bound work to a dedicated thread pool such as <code>rayon</code>, as the <code>spawn_blocking</code> docs recommend.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 3: Unbuffered File and Socket I/O</h3>
-      <p style="color: #475569; line-height: 1.6;">In Node.js, stream buffers are automatic. In Rust, calling <code>file.read()</code> or <code>socket.write()</code> directly performs a separate kernel syscall for every call. Always wrap with <code>BufReader</code> and <code>BufWriter</code> to coalesce I/O operations into 8KB buffer blocks.</p>
+      <p style="color: #475569; line-height: 1.6;">Node.js streams buffer for you. In Rust, each <code>read()</code> or <code>write()</code> on a <code>File</code> or <code>TcpStream</code> is a separate system call. When you do many small reads or writes (line-by-line parsing, writing small records), wrap the handle in <code>BufReader</code> or <code>BufWriter</code>, which batch them through an in-memory buffer (8 KiB by default on most platforms). Call <code>flush()</code> on a <code>BufWriter</code> before you rely on the data being written, because errors during the implicit flush on drop are ignored.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 4: Production .unwrap() &amp; .expect() Panics</h3>
-      <p style="color: #475569; line-height: 1.6;">Calling <code>.unwrap()</code> on <code>None</code> or <code>Err</code> causes a thread panic. In Tokio worker tasks, an unhandled panic aborts the task. Use <code>?</code> error propagation with <code>anyhow</code> for applications or <code>thiserror</code> for domain libraries.</p>
+      <p style="color: #475569; line-height: 1.6;">Calling <code>.unwrap()</code> on <code>None</code> or <code>Err</code> panics. A panic on the main thread ends the process. A panic inside a <code>tokio::spawn</code> task ends only that task, and its <code>JoinHandle</code> returns a <code>JoinError</code>, so a request can fail silently if nobody awaits the handle. With <code>panic = "abort"</code> in the profile, any panic ends the process. Propagate errors with <code>?</code>, using <code>anyhow</code> in applications and <code>thiserror</code> for library error types.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 5: Cancellation Hazards in tokio::select!</h3>
-      <p style="color: #475569; line-height: 1.6;">When a branch completes in <code>tokio::select!</code>, other pending futures are immediately dropped. If a future is mid-stream on an <code>AsyncReadExt::read_exact</code> or <code>AsyncWriteExt::write_all</code>, partial bytes are lost unless the future is cancellation-safe. Prefer atomic or framed read operations.</p>
+      <p style="color: #475569; line-height: 1.6;">When one branch of <code>tokio::select!</code> completes, the futures in the other branches are dropped. Tokio documents <code>AsyncReadExt::read_exact</code>, <code>read_to_end</code>, <code>read_to_string</code> and <code>AsyncWriteExt::write_all</code> as not cancellation safe: bytes already read or written are lost. In a <code>select!</code> loop, use cancellation-safe operations such as <code>AsyncReadExt::read</code>, <code>mpsc::Receiver::recv</code>, or <code>StreamExt::next</code> on a framed stream, or create the future once outside the loop and poll it by <code>&amp;mut</code> reference.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 6: Holding std::sync::MutexGuard Across .await</h3>
-      <p style="color: #475569; line-height: 1.6;">Holding a <code>std::sync::MutexGuard</code> across an <code>.await</code> point makes the enclosing future <code>!Send</code>, preventing it from being spawned with <code>tokio::spawn</code>. Because Tokio uses a multi-threaded work-stealing scheduler, tasks can resume on a different OS thread, violating OS-level mutex invariants (unlocking a <code>pthread_mutex_t</code> from a different thread is undefined behavior or returns <code>EPERM</code>). Furthermore, keeping an OS mutex held while suspended can deadlock Tokio worker threads. Scope synchronous locks in tight blocks <code>{ let val = *lock; }</code> or use <code>tokio::sync::Mutex</code> when locks must span async yields.</p>
+      <p style="color: #475569; line-height: 1.6;"><code>std::sync::MutexGuard</code> is <code>!Send</code>, because on some platforms the lock must be released by the thread that acquired it. Holding the guard across an <code>.await</code> makes the whole future <code>!Send</code>, so <code>tokio::spawn</code> rejects it at compile time. In futures that do not need <code>Send</code>, holding the guard across an <code>.await</code> can deadlock: another task on the same thread may try to take the lock while the holder is suspended. Copy what you need out in a tight scope, <code>let val = { let guard = m.lock().unwrap(); guard.clone() };</code>, or use <code>tokio::sync::Mutex</code> when the lock must span an <code>.await</code>. Clippy's <code>await_holding_lock</code> lint flags this pattern.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 7: Memory Leaks via Reference Cycles</h3>
-      <p style="color: #475569; line-height: 1.6;">Rust has no cycle-detecting garbage collector. Two structs holding <code>Rc</code> or <code>Arc</code> pointers to each other will never reach a reference count of 0, leaking memory forever. Break cycles with <code>Weak&lt;T&gt;</code> downgrade pointers.</p>
+      <p style="color: #475569; line-height: 1.6;">Rust has no cycle-detecting garbage collector. Two values holding <code>Rc</code> or <code>Arc</code> pointers to each other never reach a strong count of 0, so neither is freed until the process exits. Break cycles by making one direction a <code>Weak&lt;T&gt;</code> (created with <code>Rc::downgrade</code> or <code>Arc::downgrade</code>), for example child-to-parent links in a tree.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 8: Silent Integer Overflow in --release Mode</h3>
-      <p style="color: #475569; line-height: 1.6;">In debug mode, integer overflow panics. In <code>--release</code> mode, Rust wraps arithmetic using two's complement for speed. For mission-critical calculations (financial transactions, indexing counters), use <code>checked_add()</code> or <code>saturating_add()</code>.</p>
+      <p style="color: #475569; line-height: 1.6;">In the default debug profile, integer overflow panics. In <code>--release</code>, overflow checks are off by default and arithmetic wraps using two's complement. When overflow matters (money, counters, index math), use <code>checked_add()</code>, <code>saturating_add()</code> or <code>wrapping_add()</code> to make the behavior explicit, or set <code>overflow-checks = true</code> under <code>[profile.release]</code>.</p>
     </div>
 
     <div>
       <h3 style="margin-top: 0; color: #dc2626;">Footgun 9: Self-Referential Structs &amp; Pin Mechanics</h3>
-      <p style="color: #475569; line-height: 1.6;">JavaScript objects can freely reference other fields on themselves. In Rust, a struct cannot safely store a pointer or reference to another of its own fields because moving the struct (by returning it or passing by value) changes its memory address, turning internal pointers into dangling pointers. Rust uses <code>Pin&lt;P&gt;</code> to guarantee a value cannot move in memory before its destructor runs.</p>
+      <p style="color: #475569; line-height: 1.6;">JavaScript objects can freely reference their own fields. In safe Rust, a struct cannot hold a reference to one of its own fields, because moving the struct (returning it or passing it by value) changes its address and would leave that reference dangling. Async state machines need exactly this pattern, so Rust uses <code>Pin&lt;P&gt;</code>: once a value whose type is not <code>Unpin</code> is pinned, it is guaranteed not to move until it is dropped.</p>
     </div>
 
     <div>
-      <h3 style="margin-top: 0; color: #dc2626;">Footgun 10: Destructor Leaks via std::mem::forget &amp; Thread Panics</h3>
-      <p style="color: #475569; line-height: 1.6;">Rust guarantees memory safety, but does NOT guarantee that destructors (the <code>Drop</code> trait) will always execute! Calling <code>std::mem::forget()</code>, encountering an aborting panic, or crashing inside an active process leaves file descriptors, socket locks, or temporary directory markers uncleaned on the system.</p>
+      <h3 style="margin-top: 0; color: #dc2626;">Footgun 10: Destructor Leaks via std::mem::forget &amp; Aborts</h3>
+      <p style="color: #475569; line-height: 1.6;">Rust's memory safety guarantee does NOT include running destructors. <code>std::mem::forget()</code> is a safe function, and <code>panic = "abort"</code>, <code>std::process::exit()</code> and signals such as <code>SIGKILL</code> all end the process without running <code>Drop</code>. The OS still reclaims memory and closes file descriptors, but state outside the process, such as temporary files, lock files and unflushed <code>BufWriter</code> data, is left behind.</p>
     </div>
   </div>
-  </div>
+
+  <section class="appendix-faq" itemscope itemtype="https://schema.org/FAQPage" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <dl>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Is it bad to use .clone() everywhere in Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Not always, but it costs an allocation and a copy for heap types like <code>String</code> and <code>Vec</code>. Cloning small values or <code>Arc</code> handles is cheap; cloning large buffers in a hot path is not. Prefer borrowing with <code>&amp;T</code> and share large data with <code>Arc&lt;T&gt;</code>.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Why is my async Rust server slow when I call std::thread::sleep or read a file?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Those calls block the Tokio worker thread, so every other task on that worker stops making progress until they return. Use <code>tokio::time::sleep</code> and <code>tokio::fs</code>, or wrap blocking code in <code>tokio::task::spawn_blocking</code>. This is the Rust version of blocking the Node.js event loop with synchronous calls.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Does integer overflow crash a Rust program in production?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Not by default. Release builds disable overflow checks, so arithmetic wraps around silently, while debug builds panic. Use <code>checked_*</code>, <code>saturating_*</code> or <code>wrapping_*</code> methods, or enable <code>overflow-checks = true</code> in the release profile.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Can Rust leak memory?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Yes. Leaking memory is considered safe in Rust, so <code>std::mem::forget</code>, <code>Box::leak</code> and <code>Rc</code> or <code>Arc</code> reference cycles all leak without any <code>unsafe</code> code. Use <code>Weak</code> pointers to break cycles.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What happens when a spawned Tokio task panics?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">With the default <code>panic = "unwind"</code>, only that task stops, and awaiting its <code>JoinHandle</code> returns a <code>JoinError</code> whose <code>is_panic()</code> is true. The runtime and other tasks keep running. With <code>panic = "abort"</code>, the whole process exits.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="appendix-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title">Sources and further reading</h2>
+    <ol>
+      <li><a href="https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html" rel="noopener">tokio::task::spawn_blocking (docs.rs)</a>: when to use the blocking pool versus a dedicated CPU pool.</li>
+      <li><a href="https://docs.rs/tokio/latest/tokio/macro.select.html" rel="noopener">tokio::select! (docs.rs)</a>: the cancellation safety lists cited in footgun 5.</li>
+      <li><a href="https://doc.rust-lang.org/reference/expressions/operator-expr.html" rel="noopener">The Rust Reference: Operator expressions</a>: integer overflow behavior in debug and release.</li>
+      <li><a href="https://doc.rust-lang.org/book/ch15-06-reference-cycles.html" rel="noopener">The Rust Book: Reference Cycles Can Leak Memory</a>: <code>Rc</code> cycles and <code>Weak</code>.</li>
+      <li><a href="https://doc.rust-lang.org/std/mem/fn.forget.html" rel="noopener">std::mem::forget</a>: why skipping destructors is safe Rust.</li>
+      <li><a href="https://doc.rust-lang.org/std/pin/index.html" rel="noopener">std::pin module docs</a>: the pinning guarantee and <code>Unpin</code>.</li>
+    </ol>
+  </section>
 </div>

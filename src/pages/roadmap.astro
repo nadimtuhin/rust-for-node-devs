@@ -2,11 +2,13 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import ViewComponent from '../components/views/RoadmapView.astro';
+import FoundationalLessons from '../components/FoundationalLessons.astro';
 ---
 
 <Layout title="Rust Developer Roadmap (roadmap.sh) | Rust for Node Devs" description="Interactive, step-by-step Rust developer learning path aligned with roadmap.sh/rust, mapped directly to Node.js / TypeScript engineering concepts.">
   <Header />
   <main id="main-content" role="main" style="min-height: calc(100vh - 54px); overflow-y: auto;">
     <ViewComponent />
+    <FoundationalLessons appendixSlug="roadmap" />
   </main>
 </Layout>

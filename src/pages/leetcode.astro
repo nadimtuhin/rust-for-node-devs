@@ -2,11 +2,13 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import ViewComponent from '../components/views/LeetcodeView.astro';
+import FoundationalLessons from '../components/FoundationalLessons.astro';
 ---
 
 <Layout title="LeetCode Easy in Rust | Rust for Node Devs" description="Classic data structures and algorithms solved with zero-allocation Rust patterns vs JavaScript objects.">
   <Header />
   <main id="main-content" role="main" style="min-height: calc(100vh - 54px); overflow-y: auto;">
     <ViewComponent />
+    <FoundationalLessons appendixSlug="leetcode" />
   </main>
 </Layout>

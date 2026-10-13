@@ -118,6 +118,26 @@ test.describe('Rust for Node Devs - E2E Test Suite', () => {
     }
   });
 
+  test('Every appendix exposes key takeaways, FAQPage microdata and sources', async ({ page }) => {
+    const appendices = [
+      '/borrow-checker', '/async-tokio', '/cargo-vs-npm', '/microservice', '/docker', '/testing', '/ai-agents',
+      '/interviews', '/troubleshooting', '/philosophy', '/pitfalls', '/leetcode', '/cheatsheet', '/roadmap',
+    ];
+
+    for (const appendix of appendices) {
+      await page.goto(appendix);
+      await expect(page.locator('.appendix-takeaways li').first(), appendix).toBeVisible();
+
+      const faq = page.locator('[itemtype="https://schema.org/FAQPage"]');
+      await expect(faq, appendix).toHaveCount(1);
+      const questions = faq.locator('[itemprop="mainEntity"][itemtype="https://schema.org/Question"]');
+      expect(await questions.count(), appendix).toBeGreaterThanOrEqual(4);
+      await expect(questions.first().locator('[itemprop="acceptedAnswer"] [itemprop="text"]')).not.toBeEmpty();
+
+      expect(await page.locator('.appendix-sources a[href^="https://"]').count(), appendix).toBeGreaterThanOrEqual(3);
+    }
+  });
+
   test('Chapters overview page lists all chapters and appendix links', async ({ page }) => {
     await page.goto('/chapters');
 
@@ -127,5 +147,19 @@ test.describe('Rust for Node Devs - E2E Test Suite', () => {
     const chapterCards = page.locator('a[href^="/chapter/"]');
     const cardCount = await chapterCards.count();
     expect(cardCount).toBeGreaterThanOrEqual(40);
+  });
+
+  test('Lessons and appendices cross-link in both directions', async ({ page }) => {
+    await page.goto('/chapter/basic_borrowing');
+    const lessonLinks = page.locator('#detailRelatedAppendices a');
+    await expect(lessonLinks.first()).toHaveAttribute('href', '/borrow-checker');
+
+    await page.goto('/');
+    await page.locator('.chapter-nav-item[data-id="tokio_spawn"]').click();
+    await expect(page.locator('#detailRelatedAppendices a').first()).toHaveAttribute('href', '/async-tokio');
+
+    await page.goto('/borrow-checker');
+    const backLinks = page.locator('.foundational-lessons a');
+    await expect(backLinks.filter({ hasText: 'B3' })).toHaveAttribute('href', '/chapter/basic_borrowing');
   });
 });

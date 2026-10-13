@@ -17,8 +17,9 @@ const chapter = chaptersData[id] || chaptersData['basic_vars'];
 ---
 
 <Layout 
-  title={`${chapter.title} | Rust for Node.js Devs`}
-  description={`Chapter #${chapter.num}: ${chapter.title}. ${chapter.desc}`}
+  title={chapter.seoTitle}
+  description={chapter.metaDescription}
+  heading={chapter.title}
   canonicalPath={`/chapter/${id}`}
 >
   <main class="studio-main-3col" id="main-content" role="main">

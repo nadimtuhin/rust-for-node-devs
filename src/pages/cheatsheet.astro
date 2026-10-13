@@ -2,11 +2,13 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import ViewComponent from '../components/views/CheatsheetView.astro';
+import FoundationalLessons from '../components/FoundationalLessons.astro';
 ---
 
 <Layout title="Rosetta Stone Cheatsheet | Rust for Node Devs" description="Syntax and idiom quick lookup comparing JavaScript/TypeScript with Rust.">
   <Header />
   <main id="main-content" role="main" style="min-height: calc(100vh - 54px); overflow-y: auto;">
     <ViewComponent />
+    <FoundationalLessons appendixSlug="cheatsheet" />
   </main>
 </Layout>

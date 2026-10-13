@@ -2,28 +2,39 @@
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #e0f2fe; color: #0284c7; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 02 • Concurrency Deep Dive</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Node.js libuv vs Tokio Multi-Threaded Runtime</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Understanding poll-based futures, work-stealing executors, and why async Rust achieves sub-millisecond p99 latencies.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Understanding poll-based futures, work-stealing executors, cooperative scheduling, and cancellation safety in async Rust.</p>
   </div>
+
+  <aside class="appendix-takeaways" aria-labelledby="takeaways-title">
+    <h2 id="takeaways-title">Key takeaways</h2>
+    <ul>
+      <li>Node.js runs all JavaScript on one thread, while Tokio's default multi-thread runtime runs async tasks on one worker thread per CPU core and moves tasks between workers by work-stealing.</li>
+      <li>Rust futures are lazy: nothing runs until the future is awaited or spawned, unlike a JavaScript Promise whose executor runs immediately.</li>
+      <li>Blocking calls such as <code>std::thread::sleep</code> inside an async task stall every other task on that worker thread; use <code>tokio::time::sleep</code>, <code>tokio::fs</code>, or <code>tokio::task::spawn_blocking</code> instead.</li>
+      <li>Tokio gives each task a budget of 128 operations per scheduling tick on its own sockets, timers and channels, but a CPU loop with no <code>.await</code> never yields.</li>
+      <li><code>tokio::select!</code> drops the branches that lose, so only cancellation-safe operations such as <code>mpsc::Receiver::recv</code> are safe to race in a loop.</li>
+    </ul>
+  </aside>
 
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem;">
       <h3 style="margin-top: 0; color: #16a34a; font-size: 1.2rem;">🟢 Node.js (libuv + V8)</h3>
       <ul style="padding-left: 1.25rem; color: #475569; line-height: 1.6;">
-        <li><strong>Single-threaded JS Engine:</strong> User JavaScript executes on one V8 thread.</li>
-        <li><strong>Fixed libuv Threadpool:</strong> File I/O, DNS, and crypto offload to a 4-thread pool (<code>UV_THREADPOOL_SIZE</code>).</li>
-        <li><strong>Push-based Queues:</strong> Callbacks pushed to microtask (Promise) and macrotask (timers, I/O) queues.</li>
-        <li><strong>Event loop starvation:</strong> Intensive CPU computation on the main thread blocks all HTTP routing and I/O handlers.</li>
-        <li><strong>Eager Promises:</strong> Promises start executing immediately upon instantiation.</li>
+        <li><strong>Single-threaded JS Engine:</strong> User JavaScript executes on one V8 thread (per isolate; worker threads get their own).</li>
+        <li><strong>libuv Threadpool:</strong> File I/O, <code>dns.lookup</code>, and some async crypto (e.g. <code>pbkdf2</code>, <code>scrypt</code>) run on a pool that defaults to 4 threads (<code>UV_THREADPOOL_SIZE</code>).</li>
+        <li><strong>Callback Queues:</strong> Resolved Promises queue microtasks; timers and I/O callbacks run in the event loop phases.</li>
+        <li><strong>Event loop starvation:</strong> CPU-heavy work on the main thread blocks all HTTP routing and I/O handlers until it finishes.</li>
+        <li><strong>Eager Promises:</strong> A Promise's executor runs synchronously the moment the Promise is created.</li>
       </ul>
     </div>
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem;">
       <h3 style="margin-top: 0; color: #b7410e; font-size: 1.2rem;">🦀 Rust (Tokio)</h3>
       <ul style="padding-left: 1.25rem; color: #475569; line-height: 1.6;">
-        <li><strong>Work-Stealing Multi-Threading:</strong> Tasks distributed dynamically across OS worker threads matching CPU cores.</li>
-        <li><strong>OS I/O Multiplexing:</strong> Non-blocking network I/O driven directly by <code>mio</code> (epoll on Linux, kqueue on macOS).</li>
-        <li><strong>Pull-based Futures:</strong> State machines are lazy and only execute when polled by the executor via <code>Waker</code>.</li>
-        <li><strong>Isolated Blocking Pool:</strong> Blocking file/CPU operations isolated via <code>tokio::task::spawn_blocking</code> (up to 512 threads).</li>
-        <li><strong>Task Budgets:</strong> Cooperative scheduling yields periodically (co-op budget) to prevent task starvation.</li>
+        <li><strong>Work-Stealing Multi-Threading:</strong> By default one worker thread per CPU core; idle workers steal queued tasks from busy ones (see Tokio's 2019 post "Making the Tokio scheduler 10x faster").</li>
+        <li><strong>OS I/O Multiplexing:</strong> Non-blocking network I/O driven by <code>mio</code> (epoll on Linux, kqueue on macOS, IOCP on Windows).</li>
+        <li><strong>Pull-based Futures:</strong> Futures are lazy state machines; the executor polls them, and a <code>Waker</code> tells it when a pending future is ready to be polled again.</li>
+        <li><strong>Separate Blocking Pool:</strong> <code>tokio::task::spawn_blocking</code> runs blocking work on a separate pool (default cap 512 threads). <code>tokio::fs</code> uses this pool internally.</li>
+        <li><strong>Task Budgets:</strong> Tokio's own resources make a task yield after 128 operations per tick so one busy task cannot hog a worker.</li>
       </ul>
     </div>
   </div>
@@ -31,19 +42,30 @@
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">The Cardinal Rule of Tokio</h2>
     <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 1rem 1.25rem; border-radius: 4px; font-weight: 600; color: #991b1b; margin: 1rem 0;">
-      NEVER CALL SYNCHRONOUS BLOCKING CODE INSIDE AN ASYNC FUNCTION!<br>
-      <code>std::thread::sleep</code> or synchronous file I/O blocks the OS thread assigned to the Tokio worker, stalling hundreds of concurrent HTTP futures!
+      Do not call synchronous blocking code inside an async function.<br>
+      <code>std::thread::sleep</code> or synchronous file I/O blocks the OS thread running the Tokio worker, so every other task queued on that worker waits until the call returns.
     </div>
-    <p>Always use non-blocking equivalents: <code>tokio::time::sleep</code> and <code>tokio::fs</code>, or offload with <code>tokio::task::spawn_blocking</code>.</p>
+    <p>Use non-blocking equivalents (<code>tokio::time::sleep</code>, <code>tokio::fs</code>) or offload with <code>tokio::task::spawn_blocking</code>. Runtime shape is set on the entry point:</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>// Multi-thread runtime pinned to 4 workers (the default is one worker per CPU core)
+#[tokio::main(flavor = "multi_thread", worker_threads = 4)]
+async fn main() {
+    let hash = tokio::task::spawn_blocking(|| expensive_hash(b"password"))
+        .await
+        .expect("blocking task panicked");
+    println!("{hash}");
+}
+
+// Single-threaded alternative, closest to Node's model:
+// #[tokio::main(flavor = "current_thread")]</code></pre>
   </div>
 
   <!-- Cooperative Multitasking -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">Cooperative Multitasking &amp; <code>tokio::task::yield_now()</code></h2>
-    <p>Node.js developers frequently use <code>setImmediate()</code> to break up long-running computation loops so the event loop can service I/O. In Tokio, tasks run cooperatively without preemption on worker OS threads. If a task executes a CPU-heavy or tight iterative loop without hitting an <code>.await</code> point, it starves other tasks assigned to the same worker thread.</p>
-    
+    <p>Node.js developers use <code>setImmediate()</code> to break up long-running loops so the event loop can service I/O. Tokio tasks are also cooperative: there is no preemption, and a task only gives up its worker thread at an <code>.await</code> that returns <code>Pending</code>. A tight CPU loop without such a point starves other tasks on the same worker.</p>
+
     <div style="background: #f8fafc; border-left: 4px solid #0284c7; padding: 1rem 1.25rem; border-radius: 4px; margin: 1rem 0;">
-      <strong>The Solution:</strong> Call <code>tokio::task::yield_now().await</code> inside long-running async loops. This yields back to the Tokio scheduler, placing the current task at the back of the local run-queue.
+      <strong>The Solution:</strong> Call <code>tokio::task::yield_now().await</code> inside long-running async loops. This returns control to the scheduler, which re-queues the current task behind other pending tasks.
     </div>
 
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>use tokio::task;
@@ -52,21 +74,21 @@ async fn process_large_dataset(chunks: Vec&lt;Chunk&gt;) {
     for (i, chunk) in chunks.into_iter().enumerate() {
         process_chunk(chunk);
 
-        // Cooperatively yield execution every 100 iterations:
-        if i % 100 == 0 {
+        // Cooperatively yield every 100 iterations:
+        if i % 100 == 99 {
             task::yield_now().await;
         }
     }
 }</code></pre>
-    <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 0;"><em>Note:</em> Tokio also features an automatic internal "co-op budget" (defaulting to 128 poll iterations) for standard Tokio I/O drivers, but explicit loops require manual yields or <code>spawn_blocking</code>.</p>
+    <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 0;"><em>Note:</em> Tokio's automatic co-op budget (128 operations per tick, introduced in Tokio 0.2.14) only applies to Tokio resources such as sockets, timers and channels. Plain CPU loops need manual yields, or better, <code>spawn_blocking</code> or a dedicated thread pool such as rayon for heavy compute.</p>
   </div>
 
   <!-- tokio::select! & Cancellation Safety -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;"><code>tokio::select!</code> &amp; Cancellation Safety</h2>
-    <p>In JavaScript, <code>Promise.race([a, b])</code> allows the loser promise to continue executing in the background until fulfillment. In Tokio, <code>tokio::select!</code> employs <strong>destructive cancellation</strong>: whichever branch does not complete is dropped immediately, running the future's <code>Drop</code> destructor.</p>
-    
-    <p>A future is <strong>cancellation-safe</strong> if dropping it before completion does not cause corrupted state or dropped data when polled again or on retry.</p>
+    <p>In JavaScript, <code>Promise.race([a, b])</code> lets the losing promise keep running in the background. In Tokio, <code>tokio::select!</code> uses <strong>drop-based cancellation</strong>: when one branch completes, the other branch futures are dropped, running their <code>Drop</code> code. Their work stops at whatever <code>.await</code> point they had reached.</p>
+
+    <p>Tokio's docs define a method as <strong>cancellation-safe</strong> if, when it is used as a branch of <code>select!</code> in a loop and another branch completes first, no data is lost.</p>
 
     <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem; margin-top: 1rem;">
       <thead>
@@ -86,7 +108,7 @@ async fn process_large_dataset(chunks: Vec&lt;Chunk&gt;) {
             <code>tokio::net::TcpListener::accept</code>
           </td>
           <td style="padding: 0.75rem 0.5rem; color: #475569;">
-            Data is either received or not yet touched. No intermediate buffered bytes are silently discarded if cancelled.
+            Either the operation completed and returned its data, or it consumed nothing. Calling it again on the next loop iteration loses nothing.
           </td>
         </tr>
         <tr style="border-bottom: 1px solid #f1f5f9; background: #fff1f2;">
@@ -95,10 +117,10 @@ async fn process_large_dataset(chunks: Vec&lt;Chunk&gt;) {
             <code>AsyncReadExt::read_exact</code><br>
             <code>AsyncWriteExt::write_all</code><br>
             <code>AsyncBufReadExt::read_line</code><br>
-            <code>tokio::io::copy</code>
+            <code>tokio::sync::Mutex::lock</code>
           </td>
           <td style="padding: 0.75rem 0.5rem; color: #9f1239;">
-            <strong>Data loss hazard:</strong> If cancelled midway, bytes already read or written to the stream are dropped and cannot be recovered or resumed.
+            <strong>Data loss hazard:</strong> If cancelled midway, bytes already read are lost, or you cannot tell how many bytes were written. <code>Mutex::lock</code> loses no data but loses its place in the fair wait queue.
           </td>
         </tr>
       </tbody>
@@ -106,8 +128,10 @@ async fn process_large_dataset(chunks: Vec&lt;Chunk&gt;) {
 
     <div style="margin-top: 1.25rem;">
       <h4 style="margin: 0 0 0.5rem; font-size: 1rem; color: #0f172a;">Idiomatic Handling for Non-Cancellation-Safe Operations:</h4>
-      <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">For operations like <code>write_all</code>, aborting drops byte stream offsets. Delegate stream writes to a dedicated spawned task with a channel, or track slice offsets explicitly:</p>
-      <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 6px; font-size: 0.85rem; font-family: monospace;"><code>// Pattern A: Delegate stream write to spawned task and coordinate via channel / CancellationToken
+      <p style="font-size: 0.9rem; color: #64748b; margin-top: 0;">For operations like <code>write_all</code>, dropping the future midway leaves the stream partly written. Move the write into its own spawned task and race a channel against a <code>CancellationToken</code> (from <code>tokio-util</code>); the spawned task finishes the write even if you stop waiting:</p>
+      <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 6px; font-size: 0.85rem; font-family: monospace;"><code>use tokio::io::AsyncWriteExt;
+use tokio_util::sync::CancellationToken;
+
 let (tx, rx) = tokio::sync::oneshot::channel();
 tokio::spawn(async move {
     let res = writer.write_all(&amp;payload).await;
@@ -115,9 +139,46 @@ tokio::spawn(async move {
 });
 
 tokio::select! {
-    res = rx =&gt; { /* write completed without partial cancellation loss */ }
-    _ = cancel_token.cancelled() =&gt; { /* cancel safely without corrupting socket buffer */ }
+    res = rx =&gt; { /* write finished: res is Result&lt;io::Result&lt;()&gt;, RecvError&gt; */ }
+    _ = cancel_token.cancelled() =&gt; { /* stop waiting; the write is not torn midway */ }
 }</code></pre>
     </div>
   </div>
+
+  <section class="appendix-faq" itemscope itemtype="https://schema.org/FAQPage" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <dl>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Is Tokio the Rust equivalent of the Node.js event loop?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Yes, Tokio plays the role of libuv: it drives I/O readiness from the OS and schedules async tasks. The difference is that Tokio's default runtime runs tasks on several worker threads at once, while Node runs all JavaScript on one thread. <code>#[tokio::main(flavor = "current_thread")]</code> gives a single-threaded runtime closer to Node's model.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Why does my Rust async function not run when I call it?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Rust futures are lazy, so calling an async function only builds a future and does nothing until it is awaited or passed to <code>tokio::spawn</code>. This differs from JavaScript, where a Promise starts work as soon as it is created. The compiler warns about unused futures with "futures do nothing unless you .await or poll them".</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What happens if I call blocking code in a Tokio async function?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">The blocking call occupies the worker thread, so every other task scheduled on that worker waits until it returns. Use async versions such as <code>tokio::time::sleep</code> and <code>tokio::fs</code>, or move the work to <code>tokio::task::spawn_blocking</code>, which runs it on a separate thread pool capped at 512 threads by default.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What is the Rust equivalent of Promise.race?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text"><code>tokio::select!</code> waits on several futures and runs the branch of the first one to finish. Unlike <code>Promise.race</code>, the losing futures are dropped and stop running. Only race cancellation-safe operations, such as <code>mpsc::Receiver::recv</code>, inside a loop.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What is the Rust equivalent of setImmediate for long loops?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text"><code>tokio::task::yield_now().await</code> hands control back to the Tokio scheduler so other tasks can run, then resumes the current task later. For heavy CPU work, <code>spawn_blocking</code> or a rayon thread pool is usually a better fit than sprinkling yields.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="appendix-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title">Sources and further reading</h2>
+    <ol>
+      <li><a href="https://tokio.rs/blog/2019-10-scheduler" rel="noopener">Making the Tokio scheduler 10x faster (Tokio blog, 2019)</a>: design of the work-stealing scheduler.</li>
+      <li><a href="https://tokio.rs/blog/2020-04-preemption" rel="noopener">Reducing tail latencies with automatic cooperative task yielding (Tokio blog, 2020)</a>: the 128-operation task budget.</li>
+      <li><a href="https://docs.rs/tokio/latest/tokio/macro.select.html" rel="noopener">tokio::select! docs</a>: the official list of cancellation-safe and unsafe methods.</li>
+      <li><a href="https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html" rel="noopener">tokio::task::spawn_blocking docs</a>: blocking pool behaviour and the default thread cap.</li>
+      <li><a href="https://nodejs.org/en/learn/asynchronous-work/event-loop-timers-and-nexttick" rel="noopener">The Node.js Event Loop</a>: event loop phases, <code>setImmediate</code> and <code>process.nextTick</code>.</li>
+    </ol>
+  </section>
 </div>

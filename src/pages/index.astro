@@ -6,6 +6,7 @@ import LessonDetail from '../components/LessonDetail.astro';
 import Playground from '../components/Playground.astro';
 import { chaptersData } from '../data/chapters';
 import { chapterInsights } from '../data/chapterInsights';
+import { lessonCrossLinks } from '../data/crossLinks';
 
 const initialKey = 'basic_vars';
 const initialChapter = chaptersData[initialKey];
@@ -30,7 +31,7 @@ const initialChapter = chaptersData[initialKey];
   <script is:inline src="/chapters-data.js"></script>
   <script is:inline src="/chapter-insights.js"></script>
 
-  <script is:inline>
+  <script is:inline define:vars={{ lessonCrossLinks }}>
     let activeKey = 'basic_vars';
     let editor = null;
 
@@ -139,6 +140,18 @@ const initialChapter = chaptersData[initialKey];
 
       const archNoteEl = document.getElementById('detailInsightArchNote');
       if (archNoteEl) archNoteEl.innerText = insight.archNote || '';
+
+      const relatedEl = document.getElementById('detailRelatedAppendices');
+      if (relatedEl) {
+        relatedEl.replaceChildren(...(lessonCrossLinks[key] || []).map(link => {
+          const anchor = document.createElement('a');
+          anchor.href = link.href;
+          anchor.textContent = link.label;
+          const item = document.createElement('li');
+          item.appendChild(anchor);
+          return item;
+        }));
+      }
 
       const fileTab = document.getElementById('editorCurrentFile');
       if (fileTab) fileTab.innerText = `📄 main.rs — ${data.title}`;

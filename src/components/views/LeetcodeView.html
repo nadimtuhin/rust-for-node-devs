@@ -2,24 +2,35 @@
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #f1f5f9; color: #475569; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 12 • Problem Solving</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">LeetCode in Rust (JS vs Rust)</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Master core Rust data structures and algorithms through classic LeetCode problems.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Seven classic LeetCode problems solved in Rust, each compared with the JavaScript solution you already know.</p>
   </div>
+
+  <aside class="appendix-takeaways" aria-labelledby="takeaways-title">
+    <h2 id="takeaways-title">Key takeaways</h2>
+    <ul>
+      <li>LeetCode linked lists in Rust use <code>Option&lt;Box&lt;ListNode&gt;&gt;</code>, where <code>None</code> plays the role of JavaScript's <code>null</code> next pointer.</li>
+      <li><code>Option::take()</code> moves a value out and leaves <code>None</code> behind, which is how you rewire linked list nodes without fighting the borrow checker.</li>
+      <li>A Rust <code>String</code> is UTF-8 and cannot be indexed with <code>s[i]</code>; for ASCII-only problems, iterate over <code>s.bytes()</code> or index <code>s.as_bytes()</code>.</li>
+      <li><code>HashMap::with_capacity(n)</code> allocates once up front, so inserting n elements never triggers a resize.</li>
+      <li>A <code>Vec</code> works as a stack: <code>push()</code> adds to the end and <code>pop()</code> returns an <code>Option</code>, so popping an empty stack is <code>None</code> instead of <code>undefined</code>.</li>
+    </ul>
+  </aside>
 
   <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem;">
     <a href="/chapter/lc_two_sum" style="display: block; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem; text-decoration: none; color: inherit;">
       <span style="font-weight: 800; color: #b7410e;">LC #1</span>
       <h3 style="margin: 0.35rem 0 0; font-size: 1.05rem;">Two Sum</h3>
-      <p style="font-size: 0.85rem; color: #64748b; margin: 0.35rem 0 0;">Pre-allocated HashMap in O(n) time.</p>
+      <p style="font-size: 0.85rem; color: #64748b; margin: 0.35rem 0 0;">Single pass with a pre-sized HashMap, O(n) time.</p>
     </a>
     <a href="/chapter/lc_valid_parentheses" style="display: block; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem; text-decoration: none; color: inherit;">
       <span style="font-weight: 800; color: #b7410e;">LC #20</span>
       <h3 style="margin: 0.35rem 0 0; font-size: 1.05rem;">Valid Parentheses</h3>
-      <p style="font-size: 0.85rem; color: #64748b; margin: 0.35rem 0 0;">LIFO stack with Vec&lt;char&gt;.</p>
+      <p style="font-size: 0.85rem; color: #64748b; margin: 0.35rem 0 0;">LIFO stack of expected closing bytes in a Vec&lt;u8&gt;.</p>
     </a>
     <a href="/chapter/lc_merge_lists" style="display: block; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem; text-decoration: none; color: inherit;">
       <span style="font-weight: 800; color: #b7410e;">LC #21</span>
       <h3 style="margin: 0.35rem 0 0; font-size: 1.05rem;">Merge Two Sorted Lists</h3>
-      <p style="font-size: 0.85rem; color: #64748b; margin: 0.35rem 0 0;">Pattern matching with Option&lt;Box&lt;ListNode&gt;&gt;.</p>
+      <p style="font-size: 0.85rem; color: #64748b; margin: 0.35rem 0 0;">Moving Box nodes between Option&lt;Box&lt;ListNode&gt;&gt; lists with take().</p>
     </a>
     <a href="/chapter/lc_buy_sell_stock" style="display: block; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem; text-decoration: none; color: inherit;">
       <span style="font-weight: 800; color: #b7410e;">LC #121</span>
@@ -29,7 +40,7 @@
     <a href="/chapter/lc_valid_palindrome" style="display: block; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem; text-decoration: none; color: inherit;">
       <span style="font-weight: 800; color: #b7410e;">LC #125</span>
       <h3 style="margin: 0.35rem 0 0; font-size: 1.05rem;">Valid Palindrome</h3>
-      <p style="font-size: 0.85rem; color: #64748b; margin: 0.35rem 0 0;">Two pointers with char normalization.</p>
+      <p style="font-size: 0.85rem; color: #64748b; margin: 0.35rem 0 0;">Two pointers over bytes with ASCII case-insensitive comparison.</p>
     </a>
     <a href="/chapter/lc_reverse_linked_list" style="display: block; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1.25rem; text-decoration: none; color: inherit;">
       <span style="font-weight: 800; color: #b7410e;">LC #206</span>
@@ -42,4 +53,41 @@
       <p style="font-size: 0.85rem; color: #64748b; margin: 0.35rem 0 0;">Kadane's algorithm in O(n) time.</p>
     </a>
   </div>
+
+  <section class="appendix-faq" itemscope itemtype="https://schema.org/FAQPage" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <dl>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Can I solve LeetCode problems in Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Yes. Rust is one of the languages LeetCode accepts, and it provides Rust function signatures for most problems. The signatures often take owned types such as Vec&lt;i32&gt; and String, and linked list problems give you a ListNode struct with an Option&lt;Box&lt;ListNode&gt;&gt; next field.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Why are linked lists so hard in Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Each Box node has exactly one owner, so you cannot keep two mutable pointers into the same list the way you would in JavaScript. The usual fix is Option::take(), which moves the next node out and leaves None, so ownership passes along one node at a time. Doubly linked lists need Rc and RefCell or unsafe code.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What is the Rust equivalent of a JavaScript Map or object for LeetCode?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Use std::collections::HashMap for key lookups and HashSet for membership checks. Unlike a JavaScript Map, a Rust HashMap does not keep insertion order; use BTreeMap if you need keys in sorted order. The entry() API lets you insert or update a key in one lookup, which is handy for frequency counts.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">How do I index characters of a string in Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">You cannot write s[i] on a Rust String, because it is UTF-8 and one character can take several bytes. For ASCII-only inputs, which covers most LeetCode problems, use s.as_bytes()[i] or iterate with s.bytes(). For full Unicode, iterate with s.chars() or collect into a Vec&lt;char&gt;.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">How do I use a stack in Rust like a JavaScript array?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Use a Vec: push() adds to the end and pop() removes from the end. pop() returns an Option, so an empty stack gives None, which you handle with match or if let instead of checking for undefined. For a queue, use std::collections::VecDeque.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="appendix-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title">Sources and further reading</h2>
+    <ol>
+      <li><a href="https://doc.rust-lang.org/std/option/enum.Option.html" rel="noopener">Rust std docs: Option</a>: take(), as_ref() and the combinators used in the linked list solutions.</li>
+      <li><a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html" rel="noopener">Rust std docs: HashMap</a>: with_capacity(), entry() and lookup methods.</li>
+      <li><a href="https://doc.rust-lang.org/book/ch08-02-strings.html" rel="noopener">The Rust Programming Language: Storing UTF-8 Encoded Text with Strings</a>: why strings cannot be indexed by position.</li>
+      <li><a href="https://rust-unofficial.github.io/too-many-lists/" rel="noopener">Learning Rust With Entirely Too Many Linked Lists</a>: a full walk-through of linked lists and ownership.</li>
+      <li><a href="https://leetcode.com/problems/two-sum/" rel="noopener">LeetCode #1: Two Sum</a>: the original problem statement and Rust signature.</li>
+    </ol>
+  </section>
 </div>

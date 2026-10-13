@@ -1,9 +1,20 @@
 <div class="appendix-container" style="max-width: 960px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #f3e8ff; color: #9333ea; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 04 • Microservice Blueprint</span>
-    <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Production Axum 0.7+ Microservice Architecture</h1>
+    <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Production Axum 0.8 Microservice Architecture</h1>
     <p style="font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto;">From Express & Mongoose to Axum, Tower Middleware, Sub-State Extractors, SQLx Pooling, and Graceful SIGTERM/SIGINT Shutdown.</p>
   </div>
+
+  <aside class="appendix-takeaways" aria-labelledby="takeaways-title">
+    <h2 id="takeaways-title">Key takeaways</h2>
+    <ul>
+      <li>Axum 0.8 route paths use <code>/{id}</code> for parameters and <code>/{*rest}</code> for wildcards; the 0.7 syntax <code>/:id</code> panics when the route is registered.</li>
+      <li>An Axum 0.8 server binds a <code>tokio::net::TcpListener</code> and runs <code>axum::serve(listener, app)</code>; <code>.with_graceful_shutdown(signal)</code> stops accepting connections and waits for in-flight requests.</li>
+      <li>Axum shares dependencies through the <code>State&lt;T&gt;</code> extractor and <code>Router::with_state</code>; implementing <code>FromRef</code> lets a handler extract only one field of the app state, such as the database pool.</li>
+      <li>In an Axum handler, extractors that read only request metadata (<code>Path</code>, <code>Query</code>, <code>State</code>, <code>HeaderMap</code>) can appear in any order, but at most one body extractor (<code>Json</code>, <code>String</code>, <code>Bytes</code>) is allowed and it must be the last argument.</li>
+      <li>SQLx's <code>Pool::close().await</code> rejects new acquires, closes idle connections and waits until checked-out connections are released and closed, so calling it after the HTTP server stops gives PostgreSQL a clean disconnect.</li>
+    </ul>
+  </aside>
 
   <!-- Layout -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
@@ -11,26 +22,33 @@
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.9rem;"><code>my-axum-service/
 ├── Cargo.toml
 ├── src/
-│   ├── main.rs            # Entry point: TCP bind, router setup, signal listener & pool draining
-│   ├── state.rs           # AppState & FromRef sub-states (DB pool, config)
-│   ├── error.rs           # AppError enum -> IntoResponse implementation
-│   ├── routes/
-│   │   ├── mod.rs         # Router aggregation & layer attachments
-│   │   ├── health.rs      # GET /healthz
-│   │   └── users.rs       # POST /api/users, GET /api/users/{id}?page=&limit=
-│   └── models/
-│       └── user.rs        # Serde models & SQLx queries
+│   ├── main.rs            # Entry point: TCP bind, router setup, signal listener &amp; pool draining
+│   ├── state.rs           # AppState &amp; FromRef sub-states (DB pool, config)
+│   ├── error.rs           # AppError enum -&gt; IntoResponse implementation
+│   └── routes/
+│       ├── mod.rs         # pub mod health; pub mod users;
+│       ├── health.rs      # GET /healthz
+│       └── users.rs       # POST /api/users, GET /api/users?page=&amp;limit=, GET /api/users/{id}
 └── tests/
-    └── api_tests.rs       # axum::test / reqwest integration tests</code></pre>
+    └── api_tests.rs       # tower::ServiceExt::oneshot or reqwest integration tests</code></pre>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem; margin-top: 1rem;"><code># Cargo.toml
+[dependencies]
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6", features = ["trace"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+serde = { version = "1", features = ["derive"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "postgres", "uuid"] }
+uuid = { version = "1", features = ["v4", "serde"] }</code></pre>
   </div>
 
-  <!-- Main.rs & Axum 0.7 Server Setup -->
+  <!-- Main.rs & Axum 0.8 Server Setup -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">1. Entrypoint & Graceful Shutdown with Pool Draining</h2>
-    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">In Axum 0.7+, <code>axum::Server</code> was replaced with <code>tokio::net::TcpListener</code> and <code>axum::serve()</code>. Graceful shutdown intercepts both <code>SIGINT</code> (Ctrl+C) and Unix <code>SIGTERM</code> (Kubernetes pod eviction). Crucially, once the HTTP server finishes in-flight requests, the application explicitly awaits <code>db.close().await</code> to drain all PostgreSQL pooled connections cleanly before process exit.</p>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Axum 0.7 removed <code>axum::Server</code> in favour of a <code>tokio::net::TcpListener</code> passed to <code>axum::serve()</code>, and 0.8 keeps that API. Axum 0.8 changed path syntax: parameters are written <code>/{id}</code> and wildcards <code>/{*rest}</code>. Graceful shutdown listens for both <code>SIGINT</code> (Ctrl+C) and Unix <code>SIGTERM</code>, which Kubernetes sends before a pod is killed (followed by <code>SIGKILL</code> once <code>terminationGracePeriodSeconds</code>, 30 seconds by default, runs out). Once the HTTP server has finished in-flight requests, the application awaits <code>db.close().await</code> so PostgreSQL connections are closed cleanly before the process exits.</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code>// src/main.rs
 use axum::{routing::{get, post}, Router};
-use std::sync::Arc;
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 
@@ -41,34 +59,34 @@ mod state;
 use state::AppState;
 
 #[tokio::main]
-async fn main() -> Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+async fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     // 1. Initialize structured logging
     tracing_subscriber::fmt::init();
 
-    // 2. Build shared thread-safe application state
+    // 2. Build shared application state (cheap to clone: the pool is an Arc inside)
     let state = AppState::new().await?;
 
-    // 3. Assemble routes with State and Tower middleware
+    // 3. Assemble routes with State and Tower middleware (Axum 0.8 path syntax)
     let app = Router::new()
         .route("/healthz", get(routes::health::check))
-        .route("/api/users", post(routes::users::create_user))
-        .route("/api/users/:id", get(routes::users::get_user))
+        .route("/api/users", post(routes::users::create_user).get(routes::users::list_users))
+        .route("/api/users/{id}", get(routes::users::get_user))
         .layer(TraceLayer::new_for_http())
         .with_state(state.clone());
 
-    // 4. Bind raw Tokio TCP listener (Axum 0.7 idiom)
+    // 4. Bind a Tokio TCP listener
     let addr = "0.0.0.0:3000";
     let listener = TcpListener::bind(addr).await?;
     tracing::info!("Listening on {}", addr);
 
-    // 5. Serve with graceful SIGINT / SIGTERM drain
+    // 5. Serve until SIGINT / SIGTERM, then wait for in-flight requests
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
 
-    // 6. Explicit pool draining: close connections and wait for in-flight DB queries
+    // 6. Close the pool: closes idle connections, waits for checked-out ones to be released
     tracing::info!("Draining PostgreSQL connection pool...");
-    state.db.close();
+    state.db.close().await;
     tracing::info!("PostgreSQL pool closed. Server shutdown complete.");
 
     Ok(())
@@ -92,8 +110,8 @@ async fn shutdown_signal() {
     let terminate = std::future::pending::&lt;()&gt;();
 
     tokio::select! {
-        _ = ctrl_c => tracing::info!("Received SIGINT (Ctrl+C), draining HTTP connections..."),
-        _ = terminate => tracing::info!("Received SIGTERM, draining HTTP connections..."),
+        _ = ctrl_c =&gt; tracing::info!("Received SIGINT (Ctrl+C), draining HTTP connections..."),
+        _ = terminate =&gt; tracing::info!("Received SIGTERM, draining HTTP connections..."),
     }
 }</code></pre>
   </div>
@@ -101,13 +119,13 @@ async fn shutdown_signal() {
   <!-- State & Extractors -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">2. Dependency Injection: State, FromRef & Extractor Ordering Rules</h2>
-    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Unlike Express's untyped <code>req.app.locals</code>, Axum uses type-safe extractor DI. Implement <code>FromRef</code> to allow handlers to extract only the sub-state they need.</p>
-    
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Unlike Express's untyped <code>req.app.locals</code>, Axum injects dependencies through typed extractors. Implement <code>FromRef</code> (or <code>#[derive(FromRef)]</code> with the <code>macros</code> feature) so handlers can extract only the sub-state they need.</p>
+
     <div style="background: #eff6ff; border-left: 4px solid #3b82f6; padding: 1rem; border-radius: 6px; margin-bottom: 1.25rem;">
-      <strong style="color: #1e40af;">Cardinal Extractor Ordering Rule:</strong>
+      <strong style="color: #1e40af;">Extractor Ordering Rule:</strong>
       <p style="margin: 0.35rem 0 0; color: #1e3a8a; font-size: 0.9rem;">
-        Extractors implementing <code>FromRequestParts</code> (e.g. <code>Path</code>, <code>Query</code>, <code>State</code>, <code>HeaderMap</code>) inspect only request metadata and <strong>must precede</strong> body-consuming extractors.<br/>
-        Any extractor implementing <code>FromRequest</code> that consumes the HTTP request body stream (e.g. <code>Json</code>, <code>String</code>, <code>Bytes</code>) <strong>MUST be placed last in the argument list</strong>. Violating this triggers the compile error: <code>the trait Handler&lt;...&gt; is not implemented for fn(...)</code>.
+        Extractors implementing <code>FromRequestParts</code> (e.g. <code>Path</code>, <code>Query</code>, <code>State</code>, <code>HeaderMap</code>) read only request metadata and may appear in any order.<br/>
+        An extractor implementing only <code>FromRequest</code> consumes the request body (e.g. <code>Json</code>, <code>String</code>, <code>Bytes</code>), so a handler can have at most one and it <strong>must be the last argument</strong>. Breaking this rule produces a compile error saying the handler function does not implement <code>Handler&lt;_, _&gt;</code>; add <code>#[axum::debug_handler]</code> to the function to get a message that names the offending argument.
       </p>
     </div>
 
@@ -121,11 +139,11 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub async fn new() -> Result&lt;Self, sqlx::Error&gt; {
+    pub async fn new() -&gt; Result&lt;Self, sqlx::Error&gt; {
         let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
         let db = PgPoolOptions::new()
             .max_connections(20)
-            .connect(&db_url)
+            .connect(&amp;db_url)
             .await?;
         Ok(Self { db })
     }
@@ -133,9 +151,41 @@ impl AppState {
 
 // Enables handlers to extract State(db): State&lt;Pool&lt;Postgres&gt;&gt; directly
 impl FromRef&lt;AppState&gt; for Pool&lt;Postgres&gt; {
-    fn from_ref(app_state: &AppState) -> Self {
+    fn from_ref(app_state: &amp;AppState) -&gt; Self {
         app_state.db.clone()
     }
+}</code></pre>
+
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem; margin-top: 1rem;"><code>// src/error.rs
+use axum::{http::StatusCode, response::{IntoResponse, Response}};
+
+pub enum AppError {
+    NotFound(String),
+    Database(sqlx::Error),
+}
+
+// Lets handlers use `?` on SQLx calls
+impl From&lt;sqlx::Error&gt; for AppError {
+    fn from(err: sqlx::Error) -&gt; Self {
+        AppError::Database(err)
+    }
+}
+
+impl IntoResponse for AppError {
+    fn into_response(self) -&gt; Response {
+        match self {
+            AppError::NotFound(msg) =&gt; (StatusCode::NOT_FOUND, msg).into_response(),
+            AppError::Database(err) =&gt; {
+                tracing::error!(error = %err, "database error");
+                (StatusCode::INTERNAL_SERVER_ERROR, "internal server error").into_response()
+            }
+        }
+    }
+}
+
+// src/routes/health.rs
+pub async fn check() -&gt; &amp;'static str {
+    "ok"
 }</code></pre>
 
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem; margin-top: 1rem;"><code>// src/routes/users.rs
@@ -162,8 +212,8 @@ pub struct PaginationQuery {
     pub limit: u32,
 }
 
-fn default_page() -> u32 { 1 }
-fn default_limit() -> u32 { 20 }
+fn default_page() -&gt; u32 { 1 }
+fn default_limit() -&gt; u32 { 20 }
 
 #[derive(Serialize, sqlx::FromRow)]
 pub struct UserResponse {
@@ -171,41 +221,93 @@ pub struct UserResponse {
     pub email: String,
 }
 
-// ORDER RULE: State and RequestParts come first. Json (body consumer) is LAST!
+// POST /api/users
+// ORDER RULE: State (request parts) first. Json (body consumer) is LAST.
 pub async fn create_user(
     State(db): State&lt;Pool&lt;Postgres&gt;&gt;,
-    Json(payload): Json&lt;CreateUserPayload&gt;, // Terminal: consumes request stream
-) -> Result&lt;(StatusCode, Json&lt;UserResponse&gt;), AppError&gt; {
+    Json(payload): Json&lt;CreateUserPayload&gt;, // Consumes the request body
+) -&gt; Result&lt;(StatusCode, Json&lt;UserResponse&gt;), AppError&gt; {
     let user = sqlx::query_as::&lt;_, UserResponse&gt;(
         "INSERT INTO users (id, email) VALUES ($1, $2) RETURNING id, email"
     )
     .bind(Uuid::new_v4())
-    .bind(&payload.email)
-    .fetch_one(&db)
+    .bind(&amp;payload.email)
+    .fetch_one(&amp;db)
     .await?;
 
     Ok((StatusCode::CREATED, Json(user)))
 }
 
-// GET /api/users/{id}?page=1&limit=20
-// Demonstrates Path, Query, and State all implementing FromRequestParts
-pub async fn get_user(
-    Path(id): Path&lt;Uuid&gt;,
+// GET /api/users?page=1&amp;limit=20
+// Query and State both implement FromRequestParts, so their order is free
+pub async fn list_users(
     Query(pagination): Query&lt;PaginationQuery&gt;,
     State(db): State&lt;Pool&lt;Postgres&gt;&gt;,
-) -> Result&lt;Json&lt;UserResponse&gt;, AppError&gt; {
-    let offset = (pagination.page.saturating_sub(1) as i64) * (pagination.limit as i64);
+) -&gt; Result&lt;Json&lt;Vec&lt;UserResponse&gt;&gt;, AppError&gt; {
+    let limit = pagination.limit.clamp(1, 100) as i64; // cap client-supplied page size
+    let offset = (pagination.page.max(1) as i64 - 1) * limit;
+    let users = sqlx::query_as::&lt;_, UserResponse&gt;(
+        "SELECT id, email FROM users ORDER BY email LIMIT $1 OFFSET $2"
+    )
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(&amp;db)
+    .await?;
+
+    Ok(Json(users))
+}
+
+// GET /api/users/{id}
+pub async fn get_user(
+    Path(id): Path&lt;Uuid&gt;,
+    State(db): State&lt;Pool&lt;Postgres&gt;&gt;,
+) -&gt; Result&lt;Json&lt;UserResponse&gt;, AppError&gt; {
     let user = sqlx::query_as::&lt;_, UserResponse&gt;(
-        "SELECT id, email FROM users WHERE id = $1 LIMIT $2 OFFSET $3"
+        "SELECT id, email FROM users WHERE id = $1"
     )
     .bind(id)
-    .bind(pagination.limit as i64)
-    .bind(offset)
-    .fetch_optional(&db)
+    .fetch_optional(&amp;db)
     .await?
-    .ok_or(AppError::NotFound("User not found".into()))?;
+    .ok_or_else(|| AppError::NotFound("User not found".into()))?;
 
     Ok(Json(user))
 }</code></pre>
   </div>
+
+  <section class="appendix-faq" itemscope itemtype="https://schema.org/FAQPage" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <dl>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">How do I write a route parameter like Express's /users/:id in Axum?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">In Axum 0.8, write <code>.route("/users/{id}", get(handler))</code> and read the value with <code>Path(id): Path&lt;Uuid&gt;</code> or another deserializable type. Catch-all segments use <code>/{*rest}</code>. The Express-style <code>/:id</code> syntax was used up to Axum 0.7 and panics at route registration in 0.8.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What replaced app.listen() and axum::Server in Axum?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Bind a <code>tokio::net::TcpListener</code> and pass it with the router to <code>axum::serve(listener, app).await</code>. This API arrived in Axum 0.7 and is unchanged in 0.8. Chain <code>.with_graceful_shutdown(future)</code> to stop on a signal and let in-flight requests finish.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">How do I share a database pool between Axum handlers?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Put the pool in a <code>Clone</code> state struct, attach it with <code>Router::with_state(state)</code>, and extract it with <code>State&lt;AppState&gt;</code>. Implement <code>FromRef&lt;AppState&gt;</code> for the pool type if a handler should receive only the pool. SQLx's <code>Pool</code> is reference-counted internally, so cloning it is cheap.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Why does my Axum handler fail with "the trait Handler is not implemented"?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">The most common cause is a body extractor such as <code>Json</code> that is not the last argument, or two body extractors in one handler. Other causes are an argument type that is not an extractor or a return type that does not implement <code>IntoResponse</code>. Adding <code>#[axum::debug_handler]</code> to the function makes the compiler point at the exact argument.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Do I still need #[async_trait] for custom Axum extractors?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">No. Since Axum 0.8, <code>FromRequestParts</code> and <code>FromRequest</code> use native async functions in traits, so implementations are written without the <code>#[async_trait]</code> macro. Code migrated from 0.7 should remove the attribute.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="appendix-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title">Sources and further reading</h2>
+    <ol>
+      <li><a href="https://tokio.rs/blog/2025-01-01-announcing-axum-0-8-0" rel="noopener">Announcing axum 0.8.0 (Tokio blog)</a>: the <code>/{param}</code> path syntax and removal of <code>#[async_trait]</code>.</li>
+      <li><a href="https://tokio.rs/blog/2023-11-27-announcing-axum-0-7-0" rel="noopener">Announcing axum 0.7.0 (Tokio blog)</a>: <code>axum::serve</code> with <code>TcpListener</code> replacing <code>axum::Server</code>.</li>
+      <li><a href="https://docs.rs/axum/latest/axum/extract/index.html" rel="noopener">axum::extract documentation</a>: extractor ordering, <code>State</code> and <code>FromRef</code>.</li>
+      <li><a href="https://docs.rs/sqlx/latest/sqlx/struct.Pool.html" rel="noopener">sqlx::Pool documentation</a>: <code>Pool::close</code> semantics and cheap cloning.</li>
+      <li><a href="https://docs.rs/tokio/latest/tokio/signal/index.html" rel="noopener">tokio::signal documentation</a>: <code>ctrl_c</code> and Unix <code>SIGTERM</code> handling.</li>
+    </ol>
+  </section>
 </div>

@@ -2,8 +2,19 @@
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #ffedd5; color: #c2410c; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 10 • Philosophy</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">The Core Philosophy of Rust</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto;">Memory safety without garbage collection, zero-cost abstractions, and fearless concurrency explained rigorously.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto;">Memory safety without a garbage collector, zero-cost abstractions, and data-race-free concurrency, with the conditions that make each one true.</p>
   </div>
+
+  <aside class="appendix-takeaways" aria-labelledby="takeaways-title">
+    <h2 id="takeaways-title">Key takeaways</h2>
+    <ul>
+      <li>Rust has no tracing garbage collector: each value has one owner, and its memory is freed at a point the compiler decides statically, when that owner goes out of scope.</li>
+      <li>In safe Rust, the borrow checker rejects use-after-free, double free, dangling references and data races at compile time; memory leaks and deadlocks are not prevented.</li>
+      <li>Rust iterator chains are lazy and allocate nothing until a method like <code>collect()</code> runs, while each JavaScript <code>map()</code> or <code>filter()</code> call builds a new array.</li>
+      <li>The <code>Send</code> and <code>Sync</code> auto traits let the compiler refuse to move or share non-thread-safe values, such as <code>Rc&lt;T&gt;</code>, across threads.</li>
+      <li>The typestate pattern encodes states like "authenticated" in the type, so calling a method in the wrong state is a compile error instead of a runtime check.</li>
+    </ul>
+  </aside>
 
   <div style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
     <!-- Pillar 1 -->
@@ -13,10 +24,10 @@
         <h2 style="font-size: 1.35rem; font-weight: 700; margin: 0; color: #0f172a;">Safety: Compile-Time Ownership Over Tracing GC</h2>
       </div>
       <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
-        Node.js relies on V8's Generational Garbage Collector (Scavenger + concurrent Mark-Sweep-Compact). Despite modern concurrent marking, GC cycles incur high memory amplification (often 2-3× heap overhead) and non-deterministic deallocation pauses.
+        Node.js relies on V8's generational garbage collector: a parallel Scavenger for the young generation and a Mark-Compact collector for the old generation, with concurrent marking from V8's Orinoco project. Orinoco shortens main-thread pauses but does not remove them, and a tracing collector needs heap headroom above the live data to run efficiently. When an object is actually freed is up to the collector, not your code.
       </p>
       <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
-        Rust eliminates GC pauses entirely via an <strong>Affine Type System</strong> and deterministic RAII. Every value has a single owner. Lifetimes and borrow rules enforce <code>Aliasing XOR Mutability</code> (you may have either multiple immutable references <code>&amp;T</code> OR exactly one exclusive mutable reference <code>&amp;mut T</code>, never both). This statically prevents use-after-free, double-free, dangling pointers, and iterator invalidation before code ever compiles.
+        Rust has no tracing GC. Ownership works like an <strong>affine type system</strong> (a value can be moved at most once), and RAII runs a value's <code>Drop</code> at a known point: when its owner goes out of scope. Freeing still costs time, but you can see where it happens. Borrow rules enforce <code>aliasing XOR mutability</code>: at any moment you hold either any number of shared references <code>&amp;T</code> or exactly one exclusive reference <code>&amp;mut T</code>, never both. In safe Rust this rejects use-after-free, double free, dangling references and iterator invalidation at compile time. It does not prevent leaks: an <code>Rc</code> cycle or <code>std::mem::forget</code> is safe code that never frees memory.
       </p>
     </div>
 
@@ -27,10 +38,10 @@
         <h2 style="font-size: 1.35rem; font-weight: 700; margin: 0; color: #0f172a;">Speed: The Zero-Cost Abstraction Principle</h2>
       </div>
       <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
-        Bjarne Stroustrup's maxim is strictly adhered to: <em>"What you don't use, you don't pay for. And what you do use, you couldn't hand code any better."</em>
+        Rust adopts Bjarne Stroustrup's zero-overhead principle as a design goal: <em>"What you don't use, you don't pay for. And further: What you do use, you couldn't hand code any better."</em> It is a goal the compiler usually meets for iterators and generics, not a guarantee for every program.
       </p>
       <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
-        In TypeScript, high-level abstractions like <code>Array.prototype.map().filter()</code> allocate intermediate arrays and dynamic closures on every pipeline step. In Rust, Iterators compile via <strong>monomorphization</strong> and LLVM loop vectorization into raw pointer arithmetic and SIMD assembly instructions—matching or beating hand-written C loops with zero heap overhead.
+        In TypeScript, <code>arr.map(f).filter(g)</code> builds a new intermediate array at each step. In Rust, <code>iter().map(f).filter(g)</code> is lazy: no collection is allocated until <code>collect()</code>, and closures are plain values, not heap objects. Through <strong>monomorphization</strong> and inlining, LLVM typically compiles such a chain to the same machine code as a hand-written loop, and can auto-vectorize it when bounds checks are proven unnecessary. The Rust Book's "Comparing Performance: Loops vs. Iterators" section shows this with a benchmark.
       </p>
     </div>
 
@@ -38,20 +49,20 @@
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
       <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
         <span style="background: #dbeafe; color: #2563eb; padding: 0.25rem 0.65rem; border-radius: 6px; font-weight: 800; font-size: 0.85rem;">PILLAR 3</span>
-        <h2 style="font-size: 1.35rem; font-weight: 700; margin: 0; color: #0f172a;">Fearless Concurrency: The Send & Sync Auto Traits</h2>
+        <h2 style="font-size: 1.35rem; font-weight: 700; margin: 0; color: #0f172a;">Fearless Concurrency: The Send &amp; Sync Auto Traits</h2>
       </div>
       <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
-        Node.js restricts application code to a single event loop thread, delegating blocking tasks to a fixed 4-thread libuv pool. Scaling CPU work across <code>worker_threads</code> lacks safe, typed shared-memory mutation without manual byte buffer marshaling or <code>SharedArrayBuffer</code> synchronization.
+        In Node.js, your JavaScript runs on one event loop thread per isolate. Some blocking work (file system, DNS lookup, crypto, zlib) goes to libuv's thread pool, which has 4 threads by default and can be resized with <code>UV_THREADPOOL_SIZE</code>. <code>worker_threads</code> give you more JS threads, but objects are copied between them by structured clone; shared mutable memory is limited to <code>SharedArrayBuffer</code> with manual <code>Atomics</code> synchronization.
       </p>
       <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
-        Rust enables multi-core shared-memory parallelism without data races. The compiler automatically derives two marker traits:
+        Rust lets threads share typed memory, and safe Rust cannot express a data race. Two auto traits do the work; the compiler implements them for a type automatically when all its fields implement them:
       </p>
       <ul style="color: #475569; line-height: 1.7; font-size: 0.95rem; padding-left: 1.25rem;">
-        <li><code>Send</code>: Safe to transfer ownership across thread boundaries.</li>
-        <li><code>Sync</code>: Safe to share references across threads (<code>&T</code> is <code>Send</code>).</li>
+        <li><code>Send</code>: ownership of the value can be transferred to another thread.</li>
+        <li><code>Sync</code>: the value can be shared by reference across threads. Formally, <code>T</code> is <code>Sync</code> exactly when <code>&amp;T</code> is <code>Send</code>.</li>
       </ul>
       <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
-        Attempting to share non-thread-safe state (such as <code>Rc&lt;RefCell&lt;T&gt;&gt;</code>) across threads fails at compile time with a clear error pointing out the missing <code>Send/Sync</code> implementation.
+        Passing non-thread-safe state such as <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> to <code>std::thread::spawn</code> fails to compile with error E0277, which says the type cannot be sent between threads safely. The thread-safe version is <code>Arc&lt;Mutex&lt;T&gt;&gt;</code>. These guarantees cover data races only: deadlocks and higher-level race conditions (for example, check-then-act bugs) are still possible.
       </p>
     </div>
 
@@ -62,11 +73,49 @@
         <h2 style="font-size: 1.35rem; font-weight: 700; margin: 0; color: #0f172a;">Correctness: The Typestate Pattern &amp; Parse, Don't Validate</h2>
       </div>
       <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
-        In JavaScript, invalid states are detected via defensive runtime assertions (e.g. <code>if (!req.isAuthenticated) throw new Error(...)</code>), leaving room for forgotten checks and subtle security bypasses.
+        In JavaScript, invalid states are usually caught by runtime checks (e.g. <code>if (!req.isAuthenticated) throw new Error(...)</code>), and every call site has to remember to make that check.
       </p>
       <p style="color: #475569; line-height: 1.7; font-size: 0.95rem;">
-        Rust embraces <em>"Parse, Don't Validate"</em> and the <strong>Typestate Pattern</strong> using Zero-Sized Types (ZSTs). States are encoded directly into generic types (e.g. <code>Connection&lt;Unauthenticated&gt;</code> transitioning by value consumption into <code>Connection&lt;Authenticated&gt;</code>). It is literally impossible to call restricted methods (like <code>send_query()</code>) on an unauthenticated connection—the code fails to compile with zero runtime footprint.
+        Rust code often follows <em>"Parse, Don't Validate"</em> (Alexis King, 2019): check input once and return a type that proves the check passed. The <strong>typestate pattern</strong> applies the same idea to state machines using zero-sized marker types. A <code>Connection&lt;Unauthenticated&gt;</code> is consumed by value by <code>authenticate()</code>, which returns a <code>Connection&lt;Authenticated&gt;</code>. If <code>send_query()</code> exists only on <code>Connection&lt;Authenticated&gt;</code> and the struct's fields are private, calling it on an unauthenticated connection is a compile error. The marker is stored as <code>PhantomData&lt;State&gt;</code>, which takes zero bytes at runtime.
       </p>
     </div>
   </div>
+
+  <section class="appendix-faq" itemscope itemtype="https://schema.org/FAQPage" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <dl>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Does Rust have a garbage collector like Node.js?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">No. Rust frees each value when its single owner goes out of scope, and the compiler decides where that happens. For shared ownership you opt into reference counting with Rc or Arc, which frees the value when the last reference is dropped.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Is Rust 100% memory safe?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Safe Rust is memory safe: the compiler rejects use-after-free, double free, dangling references and data races. Code inside unsafe blocks can break these rules, and the standard library relies on carefully reviewed unsafe code internally. Memory leaks are considered safe, so an Rc reference cycle can still leak.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What does zero-cost abstraction mean in Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">It means a high-level feature should compile to code as fast as what you would write by hand without it. Generics are monomorphized into specialized copies, and iterator chains are usually inlined into a plain loop. The cost moves elsewhere: longer compile times and larger binaries.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What are Send and Sync in Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Send marks a type whose values can be moved to another thread, and Sync marks a type that can be shared between threads by reference. The compiler implements both automatically when every field of a type implements them. Rc is neither, so trying to use it across threads is a compile error.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Can Rust prevent deadlocks?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">No. Safe Rust prevents data races, meaning unsynchronized access to the same memory from two threads where at least one writes. Two threads can still deadlock by locking two mutexes in opposite order, and logic-level race conditions are still possible.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="appendix-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title">Sources and further reading</h2>
+    <ol>
+      <li><a href="https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html" rel="noopener">The Rust Programming Language, Chapter 4: Understanding Ownership</a>: ownership, borrowing and drop rules.</li>
+      <li><a href="https://doc.rust-lang.org/book/ch13-04-performance.html" rel="noopener">The Rust Programming Language: Comparing Performance, Loops vs. Iterators</a>: iterators as a zero-cost abstraction.</li>
+      <li><a href="https://doc.rust-lang.org/nomicon/send-and-sync.html" rel="noopener">The Rustonomicon: Send and Sync</a>: exact definitions of both auto traits.</li>
+      <li><a href="https://v8.dev/blog/trash-talk" rel="noopener">V8 blog: Trash talk, the Orinoco garbage collector</a>: how V8's Scavenger and Mark-Compact collectors work.</li>
+      <li><a href="https://docs.libuv.org/en/v1.x/threadpool.html" rel="noopener">libuv docs: Thread pool work scheduling</a>: default pool size of 4 and UV_THREADPOOL_SIZE.</li>
+      <li><a href="https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/" rel="noopener">Alexis King: Parse, don't validate</a>: the original essay behind the pattern.</li>
+    </ol>
+  </section>
 </div>

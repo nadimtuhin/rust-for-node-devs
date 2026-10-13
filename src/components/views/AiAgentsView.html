@@ -2,13 +2,24 @@
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #fae8ff; color: #a21caf; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 07 • Artificial Intelligence</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Building AI Agents in Rust</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto;">High-throughput token streaming with Server-Sent Events (SSE), tool execution with Rig, and edge inference via Candle.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto;">Token streaming with Server-Sent Events (SSE) in Axum 0.8, typed tool definitions with rig-core, and local inference with Hugging Face Candle.</p>
   </div>
+
+  <aside class="appendix-takeaways" aria-labelledby="takeaways-title">
+    <h2 id="takeaways-title">Key takeaways</h2>
+    <ul>
+      <li>Axum streams LLM tokens to a browser with <code>axum::response::sse::Sse</code>, fed by a bounded <code>tokio::sync::mpsc</code> channel so a slow client applies backpressure to the producer.</li>
+      <li>When an SSE client disconnects, Axum drops the response stream, the channel receiver is dropped, and the producer's next <code>send</code> returns an error it can use to stop generating.</li>
+      <li>rig-core is an LLM client library for Rust; its 0.x releases change the API between minor versions, so pin the exact version and check docs.rs for that version before copying examples.</li>
+      <li>In rig-core 0.44 a tool is a type implementing <code>PortableTool</code> (name, description, JSON Schema, async <code>call</code>), and the multi-turn agent loop that executes tool calls lives in the companion <code>rig-agent</code> crate.</li>
+      <li>Candle is Hugging Face's Rust ML framework: it runs models on CPU without Python, and its optional <code>cuda</code> and <code>metal</code> features add GPU backends.</li>
+    </ul>
+  </aside>
 
   <!-- SSE Streaming Gateway -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">1. High-Throughput Token Streaming Gateway (Axum 0.7 SSE)</h2>
-    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Node.js struggles with thousands of concurrent HTTP chunked/SSE connections due to V8 heap overhead (~35KB+ per active socket) and event loop GC pauses. In Rust, Axum handles 100k+ SSE connections using Tokio tasks with lightweight (~2KB) memory footprints and zero frame-allocations.</p>
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">1. Token Streaming Gateway (Axum 0.8 SSE)</h2>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Each open SSE connection in Axum is one Tokio task plus its socket buffers. The Tokio tutorial states that a task needs a single allocation and 64 bytes of memory on top of the size of its future, so the number of concurrent streams is usually limited by file descriptors, buffer memory and the upstream model API's rate limits rather than by the runtime. Node.js can also hold many idle SSE connections; the difference is that Tokio's multi-threaded scheduler spreads token parsing and fan-out across all CPU cores without <code>worker_threads</code>.</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code>use axum::{
     response::sse::{Event, KeepAlive, Sse},
     routing::post,
@@ -25,127 +36,170 @@ pub struct ChatRequest {
     pub prompt: String,
 }
 
+pub fn router() -&gt; Router {
+    Router::new().route("/chat", post(chat_stream_handler))
+}
+
 pub async fn chat_stream_handler(
     Json(req): Json&lt;ChatRequest&gt;,
-) -> Sse&lt;impl Stream&lt;Item = Result&lt;Event, Infallible&gt;&gt;&gt; {
-    // Tight bounded channel (16 tokens) gives immediate backpressure if client lags
+) -&gt; Sse&lt;impl Stream&lt;Item = Result&lt;Event, Infallible&gt;&gt;&gt; {
+    // Bounded channel: the producer waits once 16 tokens are queued and unsent
     let (tx, rx) = mpsc::channel::&lt;String&gt;(16);
 
-    // Spawn inference worker task
+    // Stand-in for a model call that yields tokens
     tokio::spawn(async move {
-        let tokens = vec!["Rust", " provides", " fearless", " concurrency", " for", " AI."];
+        let _prompt = req.prompt;
+        let tokens = ["Rust", " provides", " fearless", " concurrency", " for", " AI."];
         for token in tokens {
             tokio::time::sleep(Duration::from_millis(50)).await;
-            // Early break when HTTP connection drops
+            // send fails once the client disconnects and Axum drops the stream
             if tx.send(token.to_string()).await.is_err() {
                 break;
             }
         }
     });
 
-    // Adapt tokio mpsc receiver into an Axum SSE stream
-    let stream = ReceiverStream::new(rx).map(|token| {
-        Ok(Event::default().data(token))
-    });
+    // Adapt the mpsc receiver into an SSE event stream
+    let stream = ReceiverStream::new(rx).map(|token| Ok(Event::default().data(token)));
 
     Sse::new(stream).keep_alive(
         KeepAlive::new()
             .interval(Duration::from_secs(15))
-            .text("keep-alive-ping")
+            .text("keep-alive-ping"),
     )
 }</code></pre>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 0;">The browser's <code>EventSource</code> API only sends GET requests. For a POST endpoint like this one, read the stream on the client with <code>fetch()</code> and <code>response.body.getReader()</code>, or switch the route to GET with query parameters.</p>
   </div>
 
-  <!-- Rig Core Agent Loop -->
+  <!-- Rig Core Tool Definition -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">2. Declarative Agent & Tool Execution with <code>rig-core</code></h2>
-    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;"><code>rig-core</code> is the Rust analog to LangChain.js and Vercel AI SDK. Unlike JavaScript runtime schemas (Zod) prone to unhandled JSON coercion exceptions, Rig enforces compile-time Serde typed schemas and async tool orchestration.</p>
-    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code>use rig::{
-    completion::Prompt,
-    providers::openai::{Client, GPT_4O},
-    tool::{Tool, ToolDefinition},
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">2. Typed Tool Definitions with <code>rig-core</code></h2>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;"><code>rig-core</code> fills the role the Vercel AI SDK or LangChain.js fill in Node: one interface over many model providers. Tool arguments deserialize into a Rust struct with Serde, so a malformed tool call from the model becomes a typed error instead of an <code>undefined</code> field at runtime. The snippet below targets <strong>rig-core 0.44</strong> (library name <code>rig_core</code>) and uses only calls from that version's docs.rs pages. Older tutorials that use <code>impl Tool</code> with <code>definition()</code> and <code>client.agent(...).build()</code> describe earlier 0.x releases.</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code>// Cargo.toml: rig-core = { version = "=0.44.0", features = ["reqwest"] }
+use rig_core::{
+    completion::CompletionRequest,
+    providers::openai::{self, OpenAI},
+    tool::{tool_definition, PortableTool},
 };
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde_json::json;
 
-#[derive(Deserialize, JsonSchema)]
-struct CalcArgs { 
-    a: f64, 
+#[derive(Deserialize)]
+struct SumArgs {
+    a: f64,
     b: f64,
 }
 
-#[derive(Deserialize, Serialize)]
-struct CalcTool;
+struct SumTool;
 
-impl Tool for CalcTool {
-    const NAME: &'static str = "calculate_sum";
-    type Error = std::io::Error;
-    type Args = CalcArgs;
+impl PortableTool for SumTool {
+    const NAME: &amp;'static str = "calculate_sum";
+    type Args = SumArgs;
     type Output = f64;
+    type Error = std::convert::Infallible;
 
-    async fn definition(&self, _prompt: String) -> ToolDefinition {
-        ToolDefinition {
-            name: Self::NAME.to_string(),
-            description: "Calculates the sum of two numbers".to_string(),
-            parameters: serde_json::to_value(schemars::schema_for!(CalcArgs))
-                .unwrap_or_default(),
-        }
+    fn description(&amp;self) -&gt; String {
+        "Calculates the sum of two numbers".to_string()
     }
 
-    async fn call(&self, args: Self::Args) -> Result&lt;Self::Output, Self::Error&gt; {
+    fn parameters(&amp;self) -&gt; serde_json::Value {
+        json!({
+            "type": "object",
+            "properties": { "a": { "type": "number" }, "b": { "type": "number" } },
+            "required": ["a", "b"]
+        })
+    }
+
+    async fn call(&amp;self, args: Self::Args) -&gt; Result&lt;Self::Output, Self::Error&gt; {
         Ok(args.a + args.b)
     }
 }
 
-pub async fn run_agent() -> Result&lt;String, Box&lt;dyn std::error::Error + Send + Sync&gt;&gt; {
-    let client = Client::from_env();
-    let agent = client.agent(GPT_4O)
-        .preamble("You are a financial analysis assistant.")
-        .tool(CalcTool)
-        .build();
+pub async fn ask_with_tool() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    // Reads OPENAI_API_KEY (and optional OPENAI_BASE_URL)
+    let model = OpenAI::from_env()?.completion(openai::GPT_5_2);
 
-    let response = agent.prompt("What is 142.50 plus 391.25?").await?;
-    Ok(response)
+    let request = CompletionRequest::new("What is 142.50 plus 391.25?")
+        .tool(tool_definition(&amp;SumTool));
+    let response = model.call(request).await?;
+
+    for call in response.tool_calls() {
+        println!("tool {:?} args {:?}", call.function.name, call.function.arguments);
+    }
+    println!("{}", response.text());
+    Ok(())
 }</code></pre>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 0;">One request returns the model's tool calls; it does not run them. To execute the tool, append the result and call the model again, or use the <code>rig-agent</code> crate, which runs that loop for you.</p>
   </div>
 
   <!-- Local Candle Inference Loop -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">3. Zero-Python Local Inference with Hugging Face Candle</h2>
-    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Run quantized GGUF/safetensors models natively in your service without Python, ONNX, or C++ FFI bindings, dispatching dynamically to Metal (Apple Silicon), CUDA, or CPU.</p>
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">3. Local Inference without Python using Hugging Face Candle</h2>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Candle loads safetensors and quantized GGUF models inside your Rust process, with no Python runtime or ONNX export step. The CPU backend is pure Rust; the optional <code>cuda</code> and <code>metal</code> Cargo features add GPU backends, which call the vendor GPU libraries through FFI. The snippet targets <strong>candle-core and candle-transformers 0.11</strong>.</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; font-family: monospace; overflow-x: auto; font-size: 0.85rem;"><code>use candle_core::{Device, IndexOp, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 
-pub fn select_device() -> Device {
-    #[cfg(feature = "cuda")]
-    {
-        Device::cuda_if_available(0).unwrap_or(Device::Cpu)
+// Falls back to the CPU only when the cuda/metal features are not compiled in; with the feature on but no GPU, this returns an error
+pub fn select_device() -&gt; candle_core::Result&lt;Device&gt; {
+    let cuda = Device::cuda_if_available(0)?;
+    if cuda.is_cuda() {
+        return Ok(cuda);
     }
-    #[cfg(all(feature = "metal", not(feature = "cuda")))]
-    {
-        Device::new_metal(0).unwrap_or(Device::Cpu)
-    }
-    #[cfg(not(any(feature = "cuda", feature = "metal")))]
-    {
-        Device::Cpu
-    }
+    Device::metal_if_available(0)
 }
 
 pub fn sample_next_token(
-    logits: &Tensor, 
-    logits_processor: &mut LogitsProcessor
-) -> Result&lt;u32, candle_core::Error&gt; {
-    // Extract last sequence step logits into 1D [vocab_size] tensor for LogitsProcessor
+    logits: &amp;Tensor,
+    logits_processor: &amp;mut LogitsProcessor,
+) -&gt; candle_core::Result&lt;u32&gt; {
+    // Reduce to the last position's 1D [vocab_size] logits
     let next_token_logits = match logits.dims() {
-        [_, seq_len, _] => logits.i((0, seq_len - 1, ..))?, // 3D -> 1D [vocab_size]
-        [_, _] => logits.i((0, ..))?,                        // 2D -> 1D [vocab_size]
-        [_] => logits.clone(),                               // Already 1D [vocab_size]
-        dims => candle_core::bail!("Unexpected logits dimensions: {:?}", dims),
+        [_, seq_len, _] =&gt; logits.i((0, seq_len - 1))?, // [batch, seq, vocab]
+        [_, _] =&gt; logits.i(0)?,                         // [batch, vocab]
+        [_] =&gt; logits.clone(),                          // [vocab]
+        dims =&gt; candle_core::bail!("unexpected logits shape: {dims:?}"),
     };
 
-    // Sample next token ID via temperature & top-p/top-k logic
-    let next_token_id = logits_processor.sample(&next_token_logits)?;
-    Ok(next_token_id)
+    // LogitsProcessor::new(seed, temperature, top_p) applies temperature and top-p
+    logits_processor.sample(&amp;next_token_logits)
 }</code></pre>
   </div>
+
+  <section class="appendix-faq" itemscope itemtype="https://schema.org/FAQPage" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <dl>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">How do I stream OpenAI-style tokens to the browser from a Rust server?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Return <code>Sse::new(stream)</code> from an Axum handler, where the stream yields <code>Result&lt;Event, Infallible&gt;</code>. A common pattern is to spawn the model call into a Tokio task that writes tokens into a bounded <code>mpsc</code> channel and wrap the receiver with <code>tokio_stream::wrappers::ReceiverStream</code>. Add <code>KeepAlive</code> so proxies do not close idle connections.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What is the Rust equivalent of the Vercel AI SDK or LangChain.js?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">rig-core is the closest match: it wraps many providers (OpenAI, Anthropic, Gemini, Ollama and others) behind one completion interface and supports typed tool definitions. Its agent loop is in the separate <code>rig-agent</code> crate. The API is still 0.x and changes between minor versions, so pin the version you build against.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">How do I stop generating tokens when the user closes the browser tab?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Check the result of <code>tx.send(...).await</code> in the producer task and break when it returns an error. When the client disconnects, Axum drops the SSE response stream, which drops the channel receiver, so the next send fails. This is the Rust counterpart of listening for the request's <code>close</code> event in Node.js.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Can I run a local LLM in Rust without Python?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Yes. Hugging Face Candle loads safetensors and GGUF weights and runs inference inside a Rust binary, and <code>candle-transformers</code> ships implementations of common model families. GPU support comes from the optional <code>cuda</code> or <code>metal</code> features; without them Candle runs on the CPU.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Why does EventSource not work with my POST streaming endpoint?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">The browser <code>EventSource</code> API only issues GET requests and cannot send a request body. For a POST chat endpoint, read the SSE stream with <code>fetch()</code> and <code>response.body.getReader()</code>, then parse the <code>data:</code> lines yourself.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="appendix-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title">Sources and further reading</h2>
+    <ol>
+      <li><a href="https://docs.rs/axum/latest/axum/response/sse/index.html" rel="noopener">axum::response::sse (docs.rs)</a>: the <code>Sse</code>, <code>Event</code> and <code>KeepAlive</code> APIs used in section 1.</li>
+      <li><a href="https://tokio.rs/tokio/tutorial/spawning" rel="noopener">Tokio tutorial: Spawning</a>: source for the single allocation and 64 bytes per task figure.</li>
+      <li><a href="https://docs.rs/rig-core/latest/rig_core/" rel="noopener">rig-core crate documentation (docs.rs)</a>: <code>PortableTool</code>, <code>CompletionRequest</code> and provider clients.</li>
+      <li><a href="https://github.com/0xPlaygrounds/rig" rel="noopener">Rig repository (GitHub)</a>: examples, changelog and the companion <code>rig-agent</code> crate.</li>
+      <li><a href="https://github.com/huggingface/candle" rel="noopener">Candle repository (GitHub)</a>: supported models, backends and feature flags.</li>
+      <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events" rel="noopener">MDN: Using server-sent events</a>: the SSE wire format and <code>EventSource</code> behavior.</li>
+    </ol>
+  </section>
 </div>

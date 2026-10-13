@@ -2,11 +2,13 @@
 import Layout from '../layouts/Layout.astro';
 import Header from '../components/Header.astro';
 import ViewComponent from '../components/views/PitfallsView.astro';
+import FoundationalLessons from '../components/FoundationalLessons.astro';
 ---
 
 <Layout title="Top 10 Rust Pitfalls & Footguns | Rust for Node Devs" description="The top gotchas where JavaScript intuition fails: clone overuse, blocking async workers, lock poisoning, Pin mechanics, and unbuffered I/O.">
   <Header />
   <main id="main-content" role="main" style="min-height: calc(100vh - 54px); overflow-y: auto;">
     <ViewComponent />
+    <FoundationalLessons appendixSlug="pitfalls" />
   </main>
 </Layout>

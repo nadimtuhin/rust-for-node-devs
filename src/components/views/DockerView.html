@@ -5,30 +5,41 @@
     <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Build static binaries with cargo-chef caching, symbol stripping, MUSL cross-compilation, and distroless/scratch runtime containers.</p>
   </div>
 
+  <aside class="appendix-takeaways" aria-labelledby="takeaways-title">
+    <h2 id="takeaways-title">Key takeaways</h2>
+    <ul>
+      <li>A multi-stage Dockerfile compiles a Rust service in a full <code>rust</code> image and copies only the finished binary into a small runtime image, so the compiler and build cache never ship to production.</li>
+      <li>cargo-chef caches dependency compilation in its own Docker layer: <code>cargo chef prepare</code> writes a recipe of the dependency graph and <code>cargo chef cook</code> builds only the dependencies, so source-only changes skip that layer.</li>
+      <li>A Rust binary built against glibc on Debian 13 (trixie) runs on <code>gcr.io/distroless/cc-debian13</code>, which provides glibc, libgcc, CA certificates and a <code>nonroot</code> user but no shell or package manager.</li>
+      <li>Building for <code>x86_64-unknown-linux-musl</code> produces a statically linked binary that can run in an empty <code>scratch</code> image, provided you also copy in CA certificates if the service makes TLS calls.</li>
+      <li>For comparison, the official <code>node:22-slim</code> image is about 80 MB compressed on Docker Hub (amd64, October 2026) before any application code or node_modules are added.</li>
+    </ul>
+  </aside>
+
   <!-- Section 1: Standard Glibc Multi-Stage Dockerfile -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">1. The Gold-Standard Multi-Stage Dockerfile (with Stripping)</h2>
-    <p>Using <code>cargo-chef</code> for layer caching and explicitly stripping unneeded debug symbols in the builder stage before packaging into Google Distroless:</p>
-    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Stage 1: Dependency Chef Base (Pre-compiled cargo-chef saves 2m of build time)
-FROM lukemathwalker/cargo-chef:latest-rust-1.84-bookworm AS chef
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">1. Multi-Stage Dockerfile with cargo-chef (glibc + Distroless)</h2>
+    <p>This follows the pattern from the cargo-chef README: dependencies are compiled in a cached layer, then the binary is stripped and copied into Google Distroless. The builder and the runtime (<code>cc-debian13</code>) are both Debian 13 (trixie), so they share the same glibc version, which avoids "GLIBC_x.y not found" errors at startup. <code>latest-rust-1-trixie</code> tracks the newest stable Rust; pin a specific tag such as <code>latest-rust-1.NN-trixie</code> for reproducible builds.</p>
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Stage 1: base image with Rust and cargo-chef preinstalled
+FROM lukemathwalker/cargo-chef:latest-rust-1-trixie AS chef
 WORKDIR /app
 
-# Stage 2: Prepare lockfile recipe
+# Stage 2: compute the dependency recipe
 FROM chef AS planner
 COPY . .
 RUN cargo chef prepare --recipe-path recipe.json
 
-# Stage 3: Build & strip binary
+# Stage 3: build dependencies (cached layer), then the app
 FROM chef AS builder
 COPY --from=planner /app/recipe.json recipe.json
 RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release --bin server
-# Explicit symbol stripping (cuts binary size by 40-70%)
+# Remove the symbol table (same effect as strip = true in Cargo.toml)
 RUN strip /app/target/release/server
 
-# Stage 4: Ultra-minimal production runtime (< 20MB)
-FROM gcr.io/distroless/cc-debian12:nonroot
+# Stage 4: minimal runtime: glibc + libgcc + CA certs, no shell
+FROM gcr.io/distroless/cc-debian13:nonroot
 WORKDIR /app
 COPY --from=builder /app/target/release/server /app/server
 USER nonroot:nonroot
@@ -39,48 +50,91 @@ ENTRYPOINT ["/app/server"]</code></pre>
   <!-- Section 2: Release Profile Strip in Cargo.toml -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">2. Declarative Stripping in <code>Cargo.toml</code></h2>
-    <p>Instead of invoking the external <code>strip</code> utility in Docker, you can instruct <code>rustc</code> and LLVM to strip symbols and enable link-time optimization directly via <code>[profile.release]</code>:</p>
+    <p>Instead of invoking the external <code>strip</code> utility in Docker, you can have Cargo strip symbols and enable link-time optimization through <code>[profile.release]</code>. Since Rust 1.77, release builds already strip debuginfo by default; <code>strip = true</code> also removes the symbol table. Check the result with <code>ls -lh target/release/server</code> rather than relying on a fixed percentage:</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Cargo.toml
 [profile.release]
-opt-level = 3          # Max performance (use "z" or "s" if optimizing strictly for size)
-lto = true             # Enable full Link-Time Optimization across crates
-codegen-units = 1      # Maximize LTO optimization scope at the cost of compile time
-strip = true           # Automatically strip symbols and debuginfo from the output binary
-panic = "abort"        # Drops unwinding tables, significantly shrinking binary overhead</code></pre>
+opt-level = 3          # Release default; use "s" or "z" to optimize for size
+lto = true             # Full ("fat") Link-Time Optimization across crates
+codegen-units = 1      # Larger optimization scope at the cost of compile time
+strip = true           # Strip symbols and debuginfo from the output binary
+panic = "abort"        # No unwinding tables; any panic ends the whole process</code></pre>
   </div>
 
   <!-- Section 3: MUSL & Scratch Containers -->
-  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
-    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">3. Zero-Dependency Containers with MUSL (<code>FROM scratch</code>)</h2>
-    <p>Standard builds dynamically link to GNU libc (<code>glibc</code>). By cross-compiling against <strong>MUSL libc</strong>, you generate a 100% statically linked executable that can run in a completely empty <code>scratch</code> container with zero OS dependencies.</p>
+  <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">3. Static Binaries with MUSL (<code>FROM scratch</code>)</h2>
+    <p>Rust's <code>*-linux-gnu</code> targets dynamically link to GNU libc (<code>glibc</code>). The <code>*-linux-musl</code> targets link <strong>musl libc</strong> statically by default, producing an executable with no shared-library dependencies that can run in an empty <code>scratch</code> image. <code>scratch</code> also has no CA certificates, timezone data or user database, so copy in what your service needs.</p>
 
     <h3 style="font-size: 1.1rem; font-weight: 600; color: #334155; margin-top: 1rem;">Common Target Triplets:</h3>
     <ul style="color: #475569; padding-left: 1.25rem; line-height: 1.6;">
-      <li><code>x86_64-unknown-linux-musl</code> — 64-bit Linux (Intel/AMD)</li>
-      <li><code>aarch64-unknown-linux-musl</code> — 64-bit Linux (ARM64 / AWS Graviton / Apple Silicon Docker)</li>
+      <li><code>x86_64-unknown-linux-musl</code>: 64-bit Linux (Intel/AMD)</li>
+      <li><code>aarch64-unknown-linux-musl</code>: 64-bit Linux (ARM64 / AWS Graviton / Docker on Apple Silicon)</li>
     </ul>
 
     <p style="margin-top: 1rem;">MUSL multi-stage Dockerfile:</p>
-    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Build statically linked binary with musl target using Debian + rustup
-FROM rust:1.84-bookworm AS builder
-RUN apt-get update && apt-get install -y --no-install-recommends musl-tools musl-dev && rm -rf /var/lib/apt/lists/*
+    <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Build a statically linked binary for the musl target on Debian
+FROM rust:1-trixie AS builder
+# musl-tools provides musl-gcc for crates that compile C code
+RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends musl-tools musl-dev &amp;&amp; rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
-# Add the appropriate MUSL target triplet
 RUN rustup target add x86_64-unknown-linux-musl
 
 COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 RUN cargo build --release --target x86_64-unknown-linux-musl --bin server
 
-# Deploy into a true zero-overhead image (< 10MB)
+# Empty base image: only the binary and the CA bundle
 FROM scratch
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/server /server
+# Numeric UID: scratch has no /etc/passwd, and the default would be root
+USER 10001:10001
 EXPOSE 3000
 ENTRYPOINT ["/server"]</code></pre>
 
     <div style="margin-top: 1rem; padding: 0.85rem 1rem; background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 4px; font-size: 0.95rem; color: #1e40af;">
-      <strong>Note on OpenSSL & TLS:</strong> If your binary makes HTTPS requests, pure static MUSL builds require bundled certificates or pure-Rust TLS implementations (use <code>rustls</code> instead of <code>native-tls</code> / <code>openssl</code>).
+      <strong>Note on OpenSSL & TLS:</strong> Linking OpenSSL statically against musl is awkward, so prefer a <code>rustls</code>-based TLS stack (the default in reqwest 0.13) over <code>native-tls</code> / <code>openssl</code>. Either way the binary still needs trusted root certificates: copy the CA bundle as shown above, or compile them in with the <code>webpki-roots</code> crate.
+    </div>
+    <div style="margin-top: 1rem; padding: 0.85rem 1rem; background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 4px; font-size: 0.95rem; color: #1e40af;">
+      <strong>Note on allocator performance:</strong> musl's built-in <code>malloc</code> is simpler than glibc's and can be slower under multi-threaded allocation load. Services built for musl often set a global allocator such as <code>mimalloc</code> or <code>tikv-jemallocator</code>; benchmark your own workload before and after.
     </div>
   </div>
+
+  <section class="appendix-faq" itemscope itemtype="https://schema.org/FAQPage" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <dl>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Why are Rust Docker builds so slow compared to npm ci?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Rust compiles every dependency from source, and a plain <code>COPY . .</code> followed by <code>cargo build</code> invalidates that work on every source change. cargo-chef fixes this by building dependencies from a recipe file in a separate layer that Docker reuses until Cargo.toml or Cargo.lock change. BuildKit cache mounts for <code>~/.cargo/registry</code> and <code>target/</code> are an alternative.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Which base image should I use to run a Rust binary?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">For a glibc build from a Debian 13 (trixie) builder, use <code>gcr.io/distroless/cc-debian13:nonroot</code>, which includes glibc, libgcc and CA certificates and runs as a non-root user. For a static musl build, <code>scratch</code> works if you copy in CA certificates yourself. Use <code>debian:trixie-slim</code> instead if you need a shell for debugging.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Do I need node_modules or a runtime in the final Rust image?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">No. Rust crates are compiled into the executable, so the runtime image needs only the binary plus any system libraries it links dynamically (glibc for <code>-gnu</code> targets, nothing for static musl builds). There is no interpreter or package directory to copy.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Why does my Rust binary fail with "GLIBC_2.xx not found" in Docker?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">The binary was built against a newer glibc than the runtime image provides. Build and run on the same Debian release, for example a <code>-trixie</code> builder with <code>distroless/cc-debian13</code>, or build for a musl target to remove the glibc dependency entirely.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Should I use musl or glibc for a Rust container?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">glibc on a distroless image is the simpler default and avoids musl's slower allocator under multi-threaded load. Choose musl when you want a fully static binary for <code>scratch</code> or for running on any Linux distribution, and pair it with rustls and a faster allocator such as mimalloc.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="appendix-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title">Sources and further reading</h2>
+    <ol>
+      <li><a href="https://github.com/LukeMathWalker/cargo-chef" rel="noopener">cargo-chef README</a>: the planner / cook pattern and the <code>latest-rust-&lt;alias&gt;</code> image tags.</li>
+      <li><a href="https://github.com/GoogleContainerTools/distroless" rel="noopener">GoogleContainerTools/distroless</a>: contents of the <code>cc</code> image and the <code>nonroot</code> tags.</li>
+      <li><a href="https://doc.rust-lang.org/cargo/reference/profiles.html" rel="noopener">The Cargo Book: Profiles</a>: <code>strip</code>, <code>lto</code>, <code>codegen-units</code> and <code>panic</code> settings and their defaults.</li>
+      <li><a href="https://doc.rust-lang.org/rustc/platform-support.html" rel="noopener">rustc Platform Support</a>: the <code>x86_64-unknown-linux-musl</code> and <code>aarch64-unknown-linux-musl</code> targets.</li>
+      <li><a href="https://docs.docker.com/build/building/multi-stage/" rel="noopener">Docker Docs: Multi-stage builds</a>: how <code>COPY --from</code> keeps build tools out of the final image.</li>
+    </ol>
+  </section>
 </div>

@@ -2,8 +2,19 @@
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #e2e8f0; color: #334155; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 09 • Diagnostics</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Diagnostics, Flamegraphs & Profiling</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto;">Exact compilation flags, profiler configurations, and step-by-step diagnostic workflows for zero-overhead systems investigation.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto;">Compilation flags, profiler setup, and step-by-step workflows for finding CPU hot spots, async stalls, heap churn and undefined behavior in Rust services.</p>
   </div>
+
+  <aside class="appendix-takeaways" aria-labelledby="takeaways-title">
+    <h2 id="takeaways-title">Key takeaways</h2>
+    <ul>
+      <li><code>cargo flamegraph</code> (install with <code>cargo install flamegraph</code>) records CPU stacks with perf on Linux and DTrace on macOS and writes an interactive <code>flamegraph.svg</code>.</li>
+      <li>Release builds need <code>debug = true</code> under <code>[profile.release]</code>, or <code>CARGO_PROFILE_RELEASE_DEBUG=true</code>, so flamegraphs show function names instead of raw addresses.</li>
+      <li>Miri runs tests in an interpreter that detects many kinds of undefined behavior in <code>unsafe</code> code; install it with <code>rustup +nightly component add miri</code> and run <code>cargo +nightly miri test</code>.</li>
+      <li><code>tokio-console</code> shows live per-task poll times and wakeups, but the service must be built with <code>RUSTFLAGS="--cfg tokio_unstable"</code> and must call <code>console_subscriber::init()</code>.</li>
+      <li>The <code>dhat</code> crate swaps in a profiling global allocator and writes <code>dhat-heap.json</code> when its <code>Profiler</code> is dropped, which DHAT's online viewer can open.</li>
+    </ul>
+  </aside>
 
   <!-- Comparison Matrix: Node.js vs Rust Observability -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
@@ -47,7 +58,7 @@
   <!-- Flamegraph Section -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">1. CPU Flamegraph Profiling (<code>cargo-flamegraph</code>)</h2>
-    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Generates interactive SVG call graphs (like <code>0x</code> or <code>clinic flame</code> in Node). Requires release optimizations combined with debug symbols.</p>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Generates interactive SVG call graphs (like <code>0x</code> or <code>clinic flame</code> in Node). Profile a release build with debug info enabled, otherwise inlined frames show as addresses. You can also set <code>CARGO_PROFILE_RELEASE_DEBUG=true</code> for a single run instead of editing <code>Cargo.toml</code>.</p>
     <p style="font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem;">Cargo.toml configuration:</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code>[profile.release]
 debug = true       # Retain DWARF symbols for function names (line numbers & symbols)
@@ -70,7 +81,7 @@ cargo flamegraph --test integration_tests -- test_throughput</code></pre>
   <!-- Miri Section -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">2. Undefined Behavior Detection (<code>cargo miri</code>)</h2>
-    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Miri interprets Rust Mid-level Intermediate Representation (MIR) to catch pointer provenance violations, memory leaks, data races, and aliasing issues at runtime.</p>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Miri interprets Rust's Mid-level Intermediate Representation (MIR) and reports undefined behavior it observes while running your tests: out-of-bounds and use-after-free accesses, invalid values, aliasing violations, data races, and memory leaks. It only checks code paths your tests execute, runs much slower than native code, and cannot execute most FFI calls, so keep Miri test cases small.</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code># Install nightly toolchain & Miri component
 rustup +nightly component add miri
 
@@ -80,8 +91,11 @@ cargo +nightly miri test
 # Run a specific binary:
 cargo +nightly miri run --bin my-service
 
-# Strictest memory model using modern Tree Borrows + pointer provenance validation:
-MIRIFLAGS="-Zmiri-tree-borrows -Zmiri-strict-provenance -Zmiri-symbolic-alignment-check" cargo +nightly miri test</code></pre>
+# Extra checks: Tree Borrows aliasing model, strict provenance, symbolic alignment:
+MIRIFLAGS="-Zmiri-tree-borrows -Zmiri-strict-provenance -Zmiri-symbolic-alignment-check" cargo +nightly miri test
+
+# Allow tests that read env vars, files or the clock (Miri isolates them by default):
+MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test</code></pre>
   </div>
 
   <!-- Tokio Console Section -->
@@ -90,12 +104,14 @@ MIRIFLAGS="-Zmiri-tree-borrows -Zmiri-strict-provenance -Zmiri-symbolic-alignmen
     <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Inspect task scheduling starvation, blocked async worker threads, and channel backpressure live (equivalent to Node.js event-loop lag inspection and <code>clinic bubbleprof</code>).</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code>// 1. Cargo.toml dependency:
 // [dependencies]
-// console-subscriber = "0.4"
+// console-subscriber = "0.5"
 // tokio = { version = "1", features = ["full", "tracing"] }
 
-// 2. In src/main.rs: MUST initialize BEFORE constructing the Tokio runtime:
-fn main() -> Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-    console_subscriber::init(); // Starts gRPC telemetry server on 127.0.0.1:6669
+// 2. In src/main.rs: initialize before spawning the tasks you want to inspect.
+fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    // Sets the global tracing subscriber and serves gRPC on 127.0.0.1:6669
+    // (override with TOKIO_CONSOLE_BIND) from its own background thread
+    console_subscriber::init();
 
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -116,7 +132,7 @@ tokio-console http://127.0.0.1:6669</code></pre>
   <!-- Memory Profiling DHAT & Valgrind -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #0f172a;">4. Memory Allocation &amp; Heap Profiling (DHAT &amp; Valgrind)</h2>
-    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Track heap churn, short-lived allocations, and memory leaks down to exact stack frames without Chrome DevTools V8 overhead.</p>
+    <p style="color: #475569; font-size: 0.95rem; line-height: 1.6;">Track heap churn, short-lived allocations, and memory leaks down to the allocating stack frame. DHAT works on every platform because it lives inside your binary; Valgrind Massif needs Linux (or another Valgrind-supported OS) but requires no code changes.</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code>// 1. Cargo.toml:
 // [dependencies]
 // dhat = { version = "0.3", optional = true }
@@ -133,7 +149,8 @@ fn main() {
     let _profiler = dhat::Profiler::new_heap();
 
     // Application logic...
-    // Automatically writes `dhat-heap.json` upon graceful process exit
+    // Writes `dhat-heap.json` when `_profiler` is dropped at the end of main
+    // (not on std::process::exit or an aborting panic)
 }</code></pre>
     <p style="font-weight: 600; font-size: 0.9rem; margin: 1rem 0 0.25rem;">DHAT Profiling execution &amp; inspection:</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem;"><code># Run binary with dhat-heap feature and release debug symbols:
@@ -145,4 +162,42 @@ cargo run --release --features dhat-heap
 valgrind --tool=massif --pages-as-heap=yes --massif-out-file=massif.out target/release/my-service
 ms_print massif.out</code></pre>
   </div>
+
+  <section class="appendix-faq" itemscope itemtype="https://schema.org/FAQPage" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <dl>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What is the Rust equivalent of clinic flame or 0x?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text"><code>cargo flamegraph</code> from the flamegraph-rs project is the closest equivalent. Install it with <code>cargo install flamegraph</code> and run <code>cargo flamegraph --bin &lt;name&gt;</code>; it uses perf on Linux and DTrace on macOS and writes <code>flamegraph.svg</code>. Enable <code>debug = true</code> in <code>[profile.release]</code> so frames have names.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Why does my Rust flamegraph show hex addresses instead of function names?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">The release profile does not include debug info by default, so the profiler has no symbol data for many frames. Add <code>debug = true</code> under <code>[profile.release]</code> or run with <code>CARGO_PROFILE_RELEASE_DEBUG=true</code>, and do not set <code>strip = true</code> for profiling builds.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">How do I find what is blocking the Tokio runtime, like event loop lag in Node.js?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Use tokio-console. Add the <code>console-subscriber</code> crate, call <code>console_subscriber::init()</code>, build with <code>RUSTFLAGS="--cfg tokio_unstable"</code>, then run the <code>tokio-console</code> TUI. Tasks with long poll times are usually doing blocking or CPU-heavy work that belongs in <code>spawn_blocking</code>.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">How do I check unsafe Rust code for undefined behavior?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Run your tests under Miri with <code>cargo +nightly miri test</code> after installing it with <code>rustup +nightly component add miri</code>. Miri reports undefined behavior on the code paths the tests execute, such as use-after-free, out-of-bounds access and aliasing violations. Pass extra options through the <code>MIRIFLAGS</code> environment variable.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">How do I take a heap profile of a Rust program, like a Chrome heap snapshot?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Use the <code>dhat</code> crate: install <code>dhat::Alloc</code> as the global allocator behind a Cargo feature, create <code>dhat::Profiler::new_heap()</code> at the start of <code>main</code>, and open the resulting <code>dhat-heap.json</code> in DHAT's viewer. On Linux, Valgrind's Massif tool profiles the heap without code changes.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="appendix-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title">Sources and further reading</h2>
+    <ol>
+      <li><a href="https://github.com/flamegraph-rs/flamegraph" rel="noopener">flamegraph-rs/flamegraph (GitHub)</a>: install, <code>--root</code>, perf and DTrace usage.</li>
+      <li><a href="https://doc.rust-lang.org/cargo/reference/profiles.html" rel="noopener">The Cargo Book: Profiles</a>: <code>debug</code>, <code>strip</code> and the <code>CARGO_PROFILE_*</code> environment overrides.</li>
+      <li><a href="https://github.com/rust-lang/miri" rel="noopener">rust-lang/miri (GitHub)</a>: installation, what Miri detects, and the <code>-Zmiri-*</code> flags.</li>
+      <li><a href="https://github.com/tokio-rs/console" rel="noopener">tokio-rs/console (GitHub)</a>: console-subscriber setup and the <code>tokio_unstable</code> requirement.</li>
+      <li><a href="https://docs.rs/dhat/latest/dhat/" rel="noopener">dhat crate documentation (docs.rs)</a>: heap profiling setup and the viewer link.</li>
+      <li><a href="https://valgrind.org/docs/manual/ms-manual.html" rel="noopener">Valgrind Massif manual</a>: Massif options including <code>--pages-as-heap</code>.</li>
+    </ol>
+  </section>
 </div>

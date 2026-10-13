@@ -5,10 +5,21 @@
     <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Unit tests, external integration tests, serial database testing, and trait mocking with mockall.</p>
   </div>
 
+  <aside class="appendix-takeaways" aria-labelledby="takeaways-title">
+    <h2 id="takeaways-title">Key takeaways</h2>
+    <ul>
+      <li>Rust's test runner is built into Cargo: <code>cargo test</code> compiles and runs <code>#[test]</code> functions with no extra framework like Jest or Vitest.</li>
+      <li>Unit tests live in a <code>#[cfg(test)]</code> module inside the source file and can call private functions; integration tests live in <code>tests/</code> and only see the crate's public API.</li>
+      <li>Each file directly under <code>tests/</code> is compiled as its own crate, so shared helpers go in <code>tests/common/mod.rs</code> to avoid being run as a test file.</li>
+      <li>Tests within one test binary run in parallel threads by default; <code>cargo test -- --test-threads=1</code> runs them one at a time, similar to <code>jest --runInBand</code>.</li>
+      <li>Rust has no runtime module patching like <code>jest.mock()</code>; you put dependencies behind a trait and let <code>mockall</code> generate a mock type at compile time.</li>
+    </ul>
+  </aside>
+
   <!-- Section 1: Unit Tests -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">1. Built-in Synchronous & Async Unit Tests</h2>
-    <p>Unit tests live right inside your source files in a <code>#[cfg(test)]</code> module. They can access private functions and run concurrently by default.</p>
+    <p>Unit tests live right inside your source files in a <code>#[cfg(test)]</code> module. They can access private functions and run in parallel threads by default. Async tests use <code>#[tokio::test]</code>, which builds a fresh single-threaded (<code>current_thread</code>) runtime per test; use <code>#[tokio::test(flavor = "multi_thread")]</code> when the code under test needs multiple workers.</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>#[cfg(test)]
 mod tests {
     use super::*;
@@ -29,7 +40,7 @@ mod tests {
   <!-- Section 2: External Integration Tests -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">2. External Integration Tests & Directory Convention</h2>
-    <p>In Node.js, test runners search for <code>*.test.ts</code> anywhere. In Rust, Cargo compiles each file directly under <code>tests/</code> as an <strong>independent external crate</strong>. To share fixtures without Cargo treating them as standalone tests, use the <code>tests/common/mod.rs</code> convention:</p>
+    <p>In Node.js, test runners search for <code>*.test.ts</code> anywhere. In Rust, Cargo compiles each file directly under <code>tests/</code> as an <strong>independent external crate</strong> that links your library crate (<code>src/lib.rs</code>). A binary-only crate with just <code>src/main.rs</code> cannot be imported this way. To share fixtures without Cargo treating them as standalone tests, use the <code>tests/common/mod.rs</code> convention from The Rust Book:</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>my_project/
 ├── Cargo.toml
 ├── src/
@@ -42,7 +53,7 @@ mod tests {
 
     <p style="margin-top: 1rem;">Shared helper in <code>tests/common/mod.rs</code>:</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>// tests/common/mod.rs
-pub fn setup_test_db() -> String {
+pub fn setup_test_db() -&gt; String {
     // Spin up test db or create temporary schema
     "postgres://localhost:5432/test_db".to_string()
 }</code></pre>
@@ -55,7 +66,7 @@ mod common;
 #[tokio::test]
 async fn test_create_user_flow() {
     let db_url = common::setup_test_db();
-    let response = app::run_migration(&db_url).await;
+    let response = app::run_migration(&amp;db_url).await;
     assert!(response.is_ok());
 }</code></pre>
   </div>
@@ -63,7 +74,7 @@ async fn test_create_user_flow() {
   <!-- Section 3: Serial Execution for DB Tests -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">3. Isolated Database Tests: <code>--test-threads=1</code></h2>
-    <p>Rust's built-in test harness runs all tests across multiple threads simultaneously. When testing stateful database transactions or truncating tables, concurrent tests will clash and cause flaky failures.</p>
+    <p>Rust's built-in test harness runs the tests inside each test binary on multiple threads at once (by default one per available CPU). Cargo runs the separate test binaries (the lib, each <code>tests/*.rs</code> file) one after another. When tests share a database and truncate tables or depend on row counts, parallel tests inside one binary can clash and cause flaky failures.</p>
     <p>To run tests serially in a single thread:</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code># Pass --test-threads to the test binary via Cargo
 cargo test -- --test-threads=1
@@ -74,17 +85,17 @@ cargo test --test integration_test -- --test-threads=1
 # Alternatively, set the environment variable:
 RUST_TEST_THREADS=1 cargo test</code></pre>
     <div style="margin-top: 1rem; padding: 0.85rem 1rem; background: #fef2f2; border-left: 4px solid #ef4444; border-radius: 4px; font-size: 0.95rem; color: #991b1b;">
-      <strong>Node.js Comparison:</strong> In Jest, this is the equivalent of running with <code>jest --runInBand</code>. In Rust, you can also use crates like <code>serial_test</code> (<code>#[serial]</code> attribute) to only force DB tests into serial execution while keeping pure unit tests parallel.
+      <strong>Node.js Comparison:</strong> In Jest, this is the equivalent of <code>jest --runInBand</code>; in Vitest, <code>vitest --no-file-parallelism</code>. In Rust, you can also use the <code>serial_test</code> crate (<code>#[serial]</code> attribute) to force only DB tests into serial execution while keeping pure unit tests parallel.
     </div>
   </div>
 
   <!-- Section 4: Mocking Traits with mockall -->
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
     <h2 style="font-size: 1.35rem; font-weight: 700; margin-top: 0; color: #b7410e;">4. Mocking Traits with mockall</h2>
-    <p>JavaScript allows runtime monkey-patching (<code>jest.mock('./api')</code>). In Rust, dependencies are abstracted behind traits and mocked at compile time using <code>mockall</code>:</p>
+    <p>JavaScript allows runtime module replacement (<code>jest.mock('./api')</code>, <code>vi.mock()</code>). In Rust, dependencies are abstracted behind traits, and <code>mockall</code> generates a mock implementation of the trait at compile time. In real code, write <code>#[cfg_attr(test, mockall::automock)]</code> so the mock only exists in test builds.</p>
     <pre style="background: #0f172a; color: #f8fafc; padding: 1.25rem; border-radius: 8px; overflow-x: auto; font-family: monospace;"><code>#[mockall::automock]
 pub trait UserRepository {
-    fn get_user(&self, id: u32) -> Result&lt;String, &'static str&gt;;
+    fn get_user(&amp;self, id: u32) -&gt; Result&lt;String, &amp;'static str&gt;;
 }
 
 #[test]
@@ -97,4 +108,41 @@ fn test_service_with_mock() {
     assert_eq!(mock.get_user(42).unwrap(), "Alice");
 }</code></pre>
   </div>
+
+  <section class="appendix-faq" itemscope itemtype="https://schema.org/FAQPage" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <dl>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What is the Rust equivalent of Jest or Vitest?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Rust's test harness is built into the compiler and Cargo, so <code>cargo test</code> replaces Jest or Vitest for most projects. Mark functions with <code>#[test]</code> and use <code>assert!</code>, <code>assert_eq!</code> and <code>assert_ne!</code> for assertions. Crates such as <code>mockall</code>, <code>serial_test</code> and the separate runner <code>cargo-nextest</code> add features on top.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Where do I put tests in a Rust project?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Put unit tests in a <code>#[cfg(test)] mod tests</code> block at the bottom of the source file they test, where they can reach private functions. Put integration tests in a top-level <code>tests/</code> directory, where each file is compiled as a separate crate that can only use your library's public API.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">How do I test async functions in Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Annotate an <code>async fn</code> test with <code>#[tokio::test]</code>, which creates a Tokio runtime for that test and awaits the body. The default runtime is single-threaded; use <code>#[tokio::test(flavor = "multi_thread")]</code> if the code needs several worker threads.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">How do I run Rust tests one at a time like jest --runInBand?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Run <code>cargo test -- --test-threads=1</code>, or set <code>RUST_TEST_THREADS=1</code>. The flag goes after <code>--</code> because it is passed to the test binary, not to Cargo. To serialize only some tests, mark them with <code>#[serial]</code> from the <code>serial_test</code> crate.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">How do I mock a dependency in Rust like jest.mock?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Define the dependency as a trait, make your code accept any type implementing it, and add <code>#[cfg_attr(test, mockall::automock)]</code> to the trait. mockall then generates a <code>MockYourTrait</code> type where you set expectations with <code>expect_method().returning(...)</code>. Rust cannot swap modules at run time the way <code>jest.mock()</code> does.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="appendix-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title">Sources and further reading</h2>
+    <ol>
+      <li><a href="https://doc.rust-lang.org/book/ch11-03-test-organization.html" rel="noopener">The Rust Book: Test Organization</a>: unit vs integration tests and the <code>tests/common/mod.rs</code> convention.</li>
+      <li><a href="https://doc.rust-lang.org/cargo/commands/cargo-test.html" rel="noopener">The Cargo Book: cargo test</a>: test targets, <code>--test</code>, and passing flags to the harness.</li>
+      <li><a href="https://docs.rs/tokio/latest/tokio/attr.test.html" rel="noopener">tokio::test docs</a>: default <code>current_thread</code> runtime and the <code>flavor</code> option.</li>
+      <li><a href="https://docs.rs/mockall/latest/mockall/" rel="noopener">mockall docs</a>: <code>automock</code>, expectations and predicates.</li>
+      <li><a href="https://docs.rs/serial_test/latest/serial_test/" rel="noopener">serial_test docs</a>: the <code>#[serial]</code> attribute.</li>
+    </ol>
+  </section>
 </div>

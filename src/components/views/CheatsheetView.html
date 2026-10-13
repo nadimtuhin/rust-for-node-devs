@@ -2,8 +2,19 @@
   <div style="text-align: center; margin-bottom: 2.5rem;">
     <span style="background: #e0e7ff; color: #4338ca; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 13 • Reference</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Rosetta Stone Syntax Cheatsheet</h1>
-    <p style="font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto;">Comprehensive side-by-side systems comparison between TypeScript and Rust idioms.</p>
+    <p style="font-size: 1.1rem; color: #64748b; max-width: 700px; margin: 0 auto;">Side-by-side TypeScript and Rust idioms, from variables to shared state across threads.</p>
   </div>
+
+  <aside class="appendix-takeaways" aria-labelledby="takeaways-title">
+    <h2 id="takeaways-title">Key takeaways</h2>
+    <ul>
+      <li>Rust bindings are immutable by default; <code>let mut</code> is the opt-in, and Rust's <code>let</code> is closer to TypeScript's <code>const</code> than to its <code>let</code>.</li>
+      <li>TypeScript's <code>number</code> is a 64-bit float, while Rust makes you pick an exact integer or float type such as <code>i32</code>, <code>u64</code> or <code>f64</code>.</li>
+      <li>The <code>?</code> operator returns early with the error, converting it with <code>From</code>, which replaces most try/catch-and-rethrow code.</li>
+      <li><code>tokio::try_join!</code> is the closest match to <code>Promise.all</code>: it waits for all futures and returns the first error.</li>
+      <li>A Rust <code>HashMap</code> does not preserve insertion order the way a JavaScript <code>Map</code> does.</li>
+    </ul>
+  </aside>
 
   <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow-x: auto;">
     <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
@@ -19,25 +30,25 @@
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Variables</td>
           <td style="padding: 0.75rem 0.5rem;"><code>const x = 5;<br/>let y = 10;</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>let x = 5;<br/>let mut y = 10;</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>let x = 5;<br/>let mut y = 10;<br/>const MAX: u32 = 100; // compile-time constant</code></td>
         </tr>
         <!-- Basic Types -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Numeric Types</td>
-          <td style="padding: 0.75rem 0.5rem;"><code>number, bigint</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>i8, i16, i32, i64, i128, isize<br/>u8, u16, u32, u64, u128, usize, f32, f64</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>number</code> (IEEE 754 64-bit float)<br/><code>bigint</code> (arbitrary precision)</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>i8, i16, i32, i64, i128, isize<br/>u8, u16, u32, u64, u128, usize, f32, f64</code><br/>No built-in bigint; use a crate such as <code>num-bigint</code>.</td>
         </tr>
         <!-- Strings -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Strings</td>
-          <td style="padding: 0.75rem 0.5rem;"><code>string</code> (UTF-16; V8 uses Latin-1 <code>SeqOneByte</code> for ASCII)</td>
-          <td style="padding: 0.75rem 0.5rem;"><code>String</code> (growable UTF-8 heap)<br/><code>&str</code> (borrowed UTF-8 string slice)</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>string</code> (a sequence of UTF-16 code units; V8 stores strings that fit in Latin-1 as one byte per character internally)</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>String</code> (owned, growable, UTF-8, heap)<br/><code>&amp;str</code> (borrowed UTF-8 string slice)</td>
         </tr>
         <!-- Pattern Matching -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Pattern Matching</td>
-          <td style="padding: 0.75rem 0.5rem;"><code>switch (status) {<br/>&nbsp;&nbsp;case "ok": return 1;<br/>&nbsp;&nbsp;default: return 0;<br/>}</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>match status {<br/>&nbsp;&nbsp;Status::Ok(val) if val > 0 => 1,<br/>&nbsp;&nbsp;Status::Ok(_) => 0,<br/>&nbsp;&nbsp;_ => -1,<br/>}</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>switch (status.kind) {<br/>&nbsp;&nbsp;case "ok": return status.val &gt; 0 ? 1 : 0;<br/>&nbsp;&nbsp;default: return -1;<br/>}</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>match status {<br/>&nbsp;&nbsp;Status::Ok(val) if val &gt; 0 =&gt; 1,<br/>&nbsp;&nbsp;Status::Ok(_) =&gt; 0,<br/>&nbsp;&nbsp;_ =&gt; -1,<br/>}<br/>// must be exhaustive, or it fails to compile</code></td>
         </tr>
         <!-- If Let -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
@@ -49,13 +60,13 @@
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Option / Nullable</td>
           <td style="padding: 0.75rem 0.5rem;"><code>user?.profile?.avatar ?? "default.png"</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>user.and_then(|u| u.profile)<br/>&nbsp;&nbsp;.map(|p| p.avatar)<br/>&nbsp;&nbsp;.unwrap_or_else(|| "default.png".into())</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>// user: Option&lt;User&gt;, profile and avatar are Options<br/>user.and_then(|u| u.profile)<br/>&nbsp;&nbsp;.and_then(|p| p.avatar)<br/>&nbsp;&nbsp;.unwrap_or_else(|| "default.png".to_string())</code></td>
         </tr>
         <!-- Result and Question Mark -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Error Propagation</td>
-          <td style="padding: 0.75rem 0.5rem;"><code>try {<br/>&nbsp;&nbsp;const res = await fetch();<br/>} catch (e) { throw e; }</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>let res = fetch().await?;<br/>// Early returns Err on failure via ? operator</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>const res = await fetch(url);<br/>// a rejection propagates to the caller</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>let res = client.get(url).send().await?;<br/>// ? returns Err early, converting it with From</code></td>
         </tr>
         <!-- Structured Error Handling -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
@@ -65,19 +76,19 @@
         </tr>
         <!-- Closures -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
-          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Closures & Captures</td>
-          <td style="padding: 0.75rem 0.5rem;"><code>const add = (x: number) => x + n;<br/>// implicit lexical capture</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>|x| x + n // Borrowed capture (&)<br/>move |x| x + n // Owned capture (move)<br/>Traits: Fn, FnMut, FnOnce</code></td>
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Closures &amp; Captures</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>const add = (x: number) =&gt; x + n;<br/>// implicit lexical capture by reference</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>|x| x + n // captures n by the least it needs (&amp;, &amp;mut, or value)<br/>move |x| x + n // forces capture by value<br/>Traits: Fn, FnMut, FnOnce</code></td>
         </tr>
         <!-- Interfaces vs Traits -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Interfaces vs Traits</td>
-          <td style="padding: 0.75rem 0.5rem;"><code>interface Printable {<br/>&nbsp;&nbsp;print(): void;<br/>}</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>pub trait Printable {<br/>&nbsp;&nbsp;fn print(&self);<br/>}<br/>impl Printable for MyStruct { ... }</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>interface Printable {<br/>&nbsp;&nbsp;print(): void;<br/>}<br/>// structural: any matching shape fits</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>pub trait Printable {<br/>&nbsp;&nbsp;fn print(&amp;self);<br/>}<br/>impl Printable for MyStruct { ... }<br/>// nominal: needs an explicit impl</code></td>
         </tr>
         <!-- Generics / Bounds -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
-          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Generics & Bounds</td>
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Generics &amp; Bounds</td>
           <td style="padding: 0.75rem 0.5rem;"><code>function log&lt;T extends Printable&gt;(x: T)</code></td>
           <td style="padding: 0.75rem 0.5rem;"><code>fn log&lt;T: Printable + Send&gt;(x: T)<br/>// or with where clause: where T: Printable</code></td>
         </tr>
@@ -85,27 +96,65 @@
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Arrays &amp; Vectors</td>
           <td style="padding: 0.75rem 0.5rem;"><code>const arr = [1, 2, 3];<br/>arr.push(4);</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>let mut vec = vec![1, 2, 3];<br/>vec.push(4);<br/>Fixed stack array: [i32; 3]</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>let mut vec = vec![1, 2, 3];<br/>vec.push(4);<br/>let fixed: [i32; 3] = [1, 2, 3]; // fixed-size array</code></td>
         </tr>
         <!-- Hash Maps / Objects -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
           <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Hash Maps / Records</td>
-          <td style="padding: 0.75rem 0.5rem;"><code>const map = new Map&lt;string, number&gt;();<br/>map.set("key", 42);</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>let mut map = HashMap::new();<br/>map.insert("key".to_string(), 42);</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>const map = new Map&lt;string, number&gt;();<br/>map.set("key", 42);<br/>// iterates in insertion order</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>use std::collections::HashMap;<br/>let mut map = HashMap::new();<br/>map.insert("key".to_string(), 42);<br/>// iteration order is unspecified; BTreeMap is sorted</code></td>
         </tr>
         <!-- Async Task Spawning -->
         <tr style="border-bottom: 1px solid #f1f5f9;">
-          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Background Task</td>
-          <td style="padding: 0.75rem 0.5rem;"><code>setImmediate(async () => { ... });<br/>Promise.all([...]);</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>tokio::spawn(async move { ... });<br/>tokio::join!(fut1, fut2);</code></td>
+          <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Concurrent Async Work</td>
+          <td style="padding: 0.75rem 0.5rem;"><code>const p = doWork(); // starts without awaiting<br/>await Promise.all([fut1, fut2]);</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>let handle = tokio::spawn(async move { ... });<br/>let (a, b) = tokio::try_join!(fut1, fut2)?;<br/>// futures are lazy: nothing runs until awaited or spawned</code></td>
         </tr>
         <!-- Thread-Safe Reference Counting -->
         <tr>
           <td style="padding: 0.75rem 0.5rem; font-weight: 600;">Shared State</td>
           <td style="padding: 0.75rem 0.5rem;"><code>const shared = { count: 0 };<br/>// accessible everywhere on single thread</code></td>
-          <td style="padding: 0.75rem 0.5rem;"><code>Arc&lt;Mutex&lt;T&gt;&gt; // multi-threaded shared mutability<br/>Arc&lt;RwLock&lt;T&gt;&gt; // read-heavy workloads</code></td>
+          <td style="padding: 0.75rem 0.5rem;"><code>Arc&lt;Mutex&lt;T&gt;&gt; // shared mutable state across threads<br/>Arc&lt;RwLock&lt;T&gt;&gt; // many readers or one writer<br/>// hold a lock across .await? use tokio::sync::Mutex</code></td>
         </tr>
       </tbody>
     </table>
   </div>
+
+  <section class="appendix-faq" itemscope itemtype="https://schema.org/FAQPage" aria-labelledby="faq-title">
+    <h2 id="faq-title">Frequently asked questions</h2>
+    <dl>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What is the difference between String and &amp;str in Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">String is an owned, growable UTF-8 buffer on the heap, and &amp;str is a borrowed view into UTF-8 text owned by something else. Functions usually take &amp;str as a parameter so they accept both, and return String when they build new text. String literals like "hello" have type &amp;'static str.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What replaces null and undefined in Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">Option&lt;T&gt;, which is either Some(value) or None. The compiler will not let you use the inner value until you handle the None case, for example with match, if let, unwrap_or or the ? operator. Safe Rust has no null references.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Is there a try/catch in Rust?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">No. Recoverable errors are values of type Result&lt;T, E&gt;, and the ? operator returns the error to the caller early. Panics exist for bugs and unrecoverable states, and they are not meant for normal error handling.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">What is the Rust equivalent of Promise.all?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">tokio::try_join! is the closest match: it runs futures concurrently and returns the first error, like Promise.all rejecting. tokio::join! waits for every future and returns all results, closer to Promise.allSettled. For a dynamic number of tasks, use tokio::task::JoinSet.</span></dd>
+      </div>
+      <div itemscope itemprop="mainEntity" itemtype="https://schema.org/Question">
+        <dt itemprop="name">Are Rust traits the same as TypeScript interfaces?</dt>
+        <dd itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer"><span itemprop="text">They are similar contracts but work differently. TypeScript interfaces are structural, so any object with the right shape fits, and they are erased at runtime. Rust traits are nominal, so a type must have an explicit impl block, and traits can also provide default methods and be implemented for types you did not write.</span></dd>
+      </div>
+    </dl>
+  </section>
+
+  <section class="appendix-sources" aria-labelledby="sources-title">
+    <h2 id="sources-title">Sources and further reading</h2>
+    <ol>
+      <li><a href="https://doc.rust-lang.org/book/ch08-02-strings.html" rel="noopener">The Rust Programming Language: Strings</a>: String vs &amp;str and UTF-8 encoding.</li>
+      <li><a href="https://doc.rust-lang.org/book/ch13-01-closures.html" rel="noopener">The Rust Programming Language: Closures</a>: capture modes, move, and Fn, FnMut, FnOnce.</li>
+      <li><a href="https://doc.rust-lang.org/std/collections/struct.HashMap.html" rel="noopener">Rust std docs: HashMap</a>: API and the note that iteration order is arbitrary.</li>
+      <li><a href="https://docs.rs/tokio/latest/tokio/macro.try_join.html" rel="noopener">Tokio docs: try_join!</a>: concurrent futures that stop at the first error.</li>
+      <li><a href="https://docs.rs/thiserror/latest/thiserror/" rel="noopener">thiserror docs</a>: the #[error] and #[from] attributes used above.</li>
+      <li><a href="https://doc.rust-lang.org/rust-by-example/" rel="noopener">Rust by Example</a>: runnable examples for every row in this table.</li>
+    </ol>
+  </section>
 </div>

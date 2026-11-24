@@ -202,6 +202,9 @@ export function highlightCodeInHtml(html: string): string {
     return `${openTag}${highlighted}${closeTag}`;
   });
 
+  // Code blocks scroll horizontally, so keyboard users must be able to focus them (WCAG 2.1.1).
+  result = result.replace(/<pre(?![^>]*\btabindex=)(?=[\s>])/g, '<pre tabindex="0"');
+
   // 2. Process Cheatsheet 3-column table comparison rows: <td>...</td><td><code>JS</code></td><td><code>Rust</code></td>
   result = result.replace(
     /(<tr[^>]*>[\s\S]*?<td[^>]*>[\s\S]*?<\/td>[\s\S]*?<td[^>]*>)([\s\S]*?)(<\/td>[\s\S]*?<td[^>]*>)([\s\S]*?)(<\/td>[\s\S]*?<\/tr>)/g,

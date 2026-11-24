@@ -31,7 +31,7 @@ const chapter = chaptersData[chapterKey] || chaptersData['basic_vars'];
       <span class="console-title">Output</span>
       <div class="console-status-group">
         <span class="status-dot" id="statusDot" aria-hidden="true"></span>
-        <span id="statusLatency" style="font-size:0.7rem; color:var(--console-muted); font-family:var(--font-mono, monospace);" aria-label="Execution time"></span>
+        <span id="statusLatency" style="font-size:0.7rem; color:var(--console-muted); font-family:var(--font-mono, monospace);"></span>
         <span id="statusTag" class="status-pill ready" role="status" aria-label="Execution status">Ready</span>
         <button class="copy-snippet-btn" onclick="clearConsole()" aria-label="Clear terminal output">Clear</button>
         <button class="copy-snippet-btn" onclick="copyConsoleOutput()" aria-label="Copy terminal output to clipboard">Copy</button>

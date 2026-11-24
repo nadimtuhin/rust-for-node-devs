@@ -97,7 +97,7 @@ export const chapterInsights: Record<string, ChapterInsight> = {
   },
   "slices_strings": {
     "proTip": "Take `&str` in parameters, return `String` when you create new text, and use `Cow<'_, str>` when a function usually returns its input unchanged but sometimes has to allocate (escaping, trimming, normalizing).",
-    "footgun": "A byte range that splits a multi-byte character panics: `&s[0..21]` on the string above crashes with \"byte index 21 is not a char boundary\". Use `s.get(0..21)` (returns `None`), `char_indices()` or `is_char_boundary()` when indices come from user input. JS never panics here; it silently produces a lone surrogate, which `isWellFormed()` reports as false.",
+    "footgun": "A byte range that splits a multi-byte character panics: `&s[0..21]` on the string above crashes with \"end byte index 21 is not a char boundary\". Use `s.get(0..21)` (returns `None`), `char_indices()` or `is_char_boundary()` when indices come from user input. JS never panics here; it silently produces a lone surrogate, which `isWellFormed()` reports as false.",
     "archNote": "UTF-8 everywhere means no transcoding at the edges: HTTP bodies, files and Postgres TEXT are already UTF-8, so `String::from_utf8(bytes)` validates the buffer in place without copying it. Node decodes UTF-8 into Latin-1 or UTF-16 V8 strings on the way in and encodes back to UTF-8 on the way out (`Buffer.from(str)`)."
   },
   "smart_pointers": {
@@ -262,7 +262,7 @@ export const chapterInsights: Record<string, ChapterInsight> = {
   },
   "lc_merge_lists": {
     "proTip": "The cursor pattern `tail = &mut tail.insert(node).next;` (with `Option::insert`, Rust 1.53+) avoids `unwrap()` and keeps the borrow checker happy. Finish with `*tail = a.or(b);` to attach whatever is left in a single assignment.",
-    "footgun": "Dropping a long `Option<Box<ListNode>>` chain is recursive: each Box's destructor drops the next one. A 100,000-node list overflows the 8 MiB main-thread stack in a debug build (about 1 million in release). For your own list types, implement `Drop` with a loop that uses `take()`.",
+    "footgun": "Dropping a long `Option<Box<ListNode>>` chain is recursive: each Box's destructor drops the next one. A list of roughly 140,000 nodes overflows the 8 MiB main-thread stack in a debug build (about 300,000 in release). For your own list types, implement `Drop` with a loop that uses `take()`.",
     "archNote": "Linked lists trade cache locality for O(1) splicing. Unless you really need to splice in the middle, a `Vec` plus `sort` or a k-way merge over slices wins, because sequential memory is what CPU caches and prefetchers are built for."
   },
   "lc_buy_sell_stock": {

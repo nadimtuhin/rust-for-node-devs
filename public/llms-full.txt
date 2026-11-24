@@ -1508,7 +1508,7 @@ fn main() {
 ```
 
 - **Pro tip:** Take `&str` in parameters, return `String` when you create new text, and use `Cow<'_, str>` when a function usually returns its input unchanged but sometimes has to allocate (escaping, trimming, normalizing).
-- **Footgun:** A byte range that splits a multi-byte character panics: `&s[0..21]` on the string above crashes with "byte index 21 is not a char boundary". Use `s.get(0..21)` (returns `None`), `char_indices()` or `is_char_boundary()` when indices come from user input. JS never panics here; it silently produces a lone surrogate, which `isWellFormed()` reports as false.
+- **Footgun:** A byte range that splits a multi-byte character panics: `&s[0..21]` on the string above crashes with "end byte index 21 is not a char boundary". Use `s.get(0..21)` (returns `None`), `char_indices()` or `is_char_boundary()` when indices come from user input. JS never panics here; it silently produces a lone surrogate, which `isWellFormed()` reports as false.
 - **Architecture note:** UTF-8 everywhere means no transcoding at the edges: HTTP bodies, files and Postgres TEXT are already UTF-8, so `String::from_utf8(bytes)` validates the buffer in place without copying it. Node decodes UTF-8 into Latin-1 or UTF-16 V8 strings on the way in and encodes back to UTF-8 on the way out (`Buffer.from(str)`).
 
 Go deeper: [Appendix 8: Senior Rust Interview Q&A](https://rust-for-node-devs.vercel.app/interviews), [Appendix 12: LeetCode Easy in Rust](https://rust-for-node-devs.vercel.app/leetcode)
@@ -2844,7 +2844,7 @@ URL: https://rust-for-node-devs.vercel.app/chapter/tokio_spawn
 
 `Promise.all` waits for promises that are already running on Node's single JS thread. Rust futures are lazy and do nothing until polled. `tokio::join!` polls several futures concurrently inside one task, while `tokio::spawn` hands a future to Tokio's multi-threaded, work-stealing scheduler so independent tasks can run in parallel on every core.
 
-**Why Rust does it this way:** `join!` gives concurrency without parallelism: it polls each child future in turn whenever it is woken, all inside the task that awaited it, so the two sleeps overlap and the total is about 300ms, not 500ms. `spawn` creates a new task: Tokio makes one heap allocation holding a task header plus the future's state machine (sized by the largest set of locals alive across any `.await`) and puts it on a run queue. Tasks spawned from `main` land in a shared injection queue that any free worker pulls from, and idle workers also steal from busy ones, so the shards report different thread ids. Because a task can move between threads, `spawn` requires the future to be `Send + 'static`, so it can't borrow from the caller's stack. A Node promise is a V8 heap object whose continuations run from the microtask queue on the one main thread. For CPU parallelism Node needs a `worker_threads` Worker: a separate V8 isolate with its own heap and event loop, where every message is structured-cloned across the boundary.
+**Why Rust does it this way:** `join!` gives concurrency without parallelism: it polls each child future in turn whenever it is woken, all inside the task that awaited it, so the two sleeps overlap and the total is about 300ms, not 500ms. `spawn` creates a new task: Tokio makes one heap allocation holding a task header plus the future's state machine (sized by the largest set of locals alive across any `.await`) and puts it on a run queue. Tasks spawned from `main` land in a shared injection queue that any free worker pulls from, and idle workers also steal from busy ones, so the shards may report different thread ids (short tasks often all finish on one worker). Because a task can move between threads, `spawn` requires the future to be `Send + 'static`, so it can't borrow from the caller's stack. A Node promise is a V8 heap object whose continuations run from the microtask queue on the one main thread. For CPU parallelism Node needs a `worker_threads` Worker: a separate V8 isolate with its own heap and event loop, where every message is structured-cloned across the boundary.
 
 Node.js / TypeScript:
 
@@ -5094,7 +5094,7 @@ fn main() {
 ```
 
 - **Pro tip:** The cursor pattern `tail = &mut tail.insert(node).next;` (with `Option::insert`, Rust 1.53+) avoids `unwrap()` and keeps the borrow checker happy. Finish with `*tail = a.or(b);` to attach whatever is left in a single assignment.
-- **Footgun:** Dropping a long `Option<Box<ListNode>>` chain is recursive: each Box's destructor drops the next one. A 100,000-node list overflows the 8 MiB main-thread stack in a debug build (about 1 million in release). For your own list types, implement `Drop` with a loop that uses `take()`.
+- **Footgun:** Dropping a long `Option<Box<ListNode>>` chain is recursive: each Box's destructor drops the next one. A list of roughly 140,000 nodes overflows the 8 MiB main-thread stack in a debug build (about 300,000 in release). For your own list types, implement `Drop` with a loop that uses `take()`.
 - **Architecture note:** Linked lists trade cache locality for O(1) splicing. Unless you really need to splice in the middle, a `Vec` plus `sort` or a k-way merge over slices wins, because sequential memory is what CPU caches and prefetchers are built for.
 
 Go deeper: [Appendix 12: LeetCode Easy in Rust](https://rust-for-node-devs.vercel.app/leetcode)

@@ -1,6 +1,6 @@
 <div class="appendix-container" style="max-width: 900px; margin: 0 auto; padding: 2.5rem 1.5rem; color: #1e293b; font-family: var(--font-ui, sans-serif);">
   <div style="text-align: center; margin-bottom: 2.5rem;">
-    <span style="background: #e0f2fe; color: #0284c7; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 02 • Concurrency Deep Dive</span>
+    <span style="background: #e0f2fe; color: #0369a1; padding: 0.35rem 0.85rem; border-radius: 9999px; font-weight: 700; font-size: 0.85rem;">Appendix 02 • Concurrency Deep Dive</span>
     <h1 style="font-size: 2.25rem; font-weight: 800; margin: 0.75rem 0; color: #0f172a;">Node.js libuv vs Tokio Multi-Threaded Runtime</h1>
     <p style="font-size: 1.1rem; color: #64748b; max-width: 650px; margin: 0 auto;">Understanding poll-based futures, work-stealing executors, cooperative scheduling, and cancellation safety in async Rust.</p>
   </div>
@@ -18,7 +18,7 @@
 
   <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1.75rem;">
-      <h3 style="margin-top: 0; color: #16a34a; font-size: 1.2rem;">🟢 Node.js (libuv + V8)</h3>
+      <h3 style="margin-top: 0; color: #15803d; font-size: 1.2rem;">🟢 Node.js (libuv + V8)</h3>
       <ul style="padding-left: 1.25rem; color: #475569; line-height: 1.6;">
         <li><strong>Single-threaded JS Engine:</strong> User JavaScript executes on one V8 thread (per isolate; worker threads get their own).</li>
         <li><strong>libuv Threadpool:</strong> File I/O, <code>dns.lookup</code>, and some async crypto (e.g. <code>pbkdf2</code>, <code>scrypt</code>) run on a pool that defaults to 4 threads (<code>UV_THREADPOOL_SIZE</code>).</li>

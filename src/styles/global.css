@@ -40,7 +40,7 @@
   --text: #0f172a;                /* Slate 900 (16:1 WCAG AAA on white) */
   --text-body: #334155;           /* Slate 700 (9:1 WCAG AAA on white) */
   --text-muted: #64748b;          /* Slate 500 (4.6:1 WCAG AA on white) */
-  --text-tertiary: #94a3b8;       /* Slate 400 */
+  --text-tertiary: #64748b;       /* Slate 500 (4.6:1 on the #fafafa sidebar; Slate 400 failed WCAG AA) */
 
   /* TYPOGRAPHY SCALE (MODULAR 1.200 - 1.250 SCALE) */
   --font-size-3xs: 0.625rem;      /* 10px */
@@ -1077,7 +1077,7 @@ header {
 .node-file-tag {
   font-size: 0.7rem;
   font-weight: 500;
-  color: var(--text-muted);
+  color: #475569; /* Slate 600: --text-muted is below 4.5:1 on the Slate 100 tag */;
   font-family: var(--font-mono);
   background: var(--border-subtle);
   padding: 0.1rem 0.4rem;
@@ -1176,7 +1176,7 @@ header {
 :not(pre):not(.node-code) > code .tok-builtin { color: #0284c7; }
 :not(pre):not(.node-code) > code .tok-type { color: #0d9488; font-weight: 600; }
 :not(pre):not(.node-code) > code .tok-literal { color: #dc2626; font-weight: 500; }
-:not(pre):not(.node-code) > code .tok-number { color: #d97706; }
+:not(pre):not(.node-code) > code .tok-number { color: #b45309; } /* amber-700: #d97706 was 2.9:1 on the inline-code background */
 :not(pre):not(.node-code) > code .tok-func { color: #2563eb; }
 :not(pre):not(.node-code) > code .tok-macro { color: #b45309; font-weight: 600; }
 :not(pre):not(.node-code) > code .tok-attr,
